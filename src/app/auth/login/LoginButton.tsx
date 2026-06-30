@@ -41,7 +41,7 @@ export default function LoginButton({ redirectTo = "/" }: { redirectTo?: string 
     });
 
     if (otpError) {
-      setError("No se pudo enviar el link. Intenta de nuevo.");
+      setError(`Error al enviar: ${otpError.message}`);
     } else {
       setSent(true);
     }
