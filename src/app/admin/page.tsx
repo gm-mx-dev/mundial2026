@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import Navigation from "@/components/Navigation";
 import ParticipantsManager from "./ParticipantsManager";
 import ResultsManager from "./ResultsManager";
-import type { Participant, Match, BolsaInfo } from "@/types/database";
+import AdminPronosticosManager from "./AdminPronosticosManager";
+import type { Participant, Match, Phase, BolsaInfo } from "@/types/database";
 
 export const revalidate = 0;
 
@@ -30,14 +31,16 @@ export default async function AdminPage() {
     );
   }
 
-  const [participantsRes, matchesRes, bolsaRes] = await Promise.all([
+  const [participantsRes, matchesRes, phasesRes, bolsaRes] = await Promise.all([
     supabase.from("participants").select("*").order("name"),
     supabase.from("matches").select("*, phases(display_name)").order("kickoff_at"),
+    supabase.from("phases").select("*").order("sort_order"),
     supabase.rpc("get_bolsa"),
   ]);
 
   const participants: Participant[] = participantsRes.data ?? [];
   const matches: Match[] = matchesRes.data ?? [];
+  const phases: Phase[] = phasesRes.data ?? [];
   const bolsa: BolsaInfo = bolsaRes.data?.[0] ?? {
     activos: 18, bolsa_total: 9000,
     primer_lugar: 5400, segundo_lugar: 2250, tercer_lugar: 1350,
@@ -75,12 +78,26 @@ export default async function AdminPage() {
         </div>
 
         {/* Resultados */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mb-6">
           <div className="px-4 py-3 border-b border-gray-800">
             <h2 className="font-semibold text-white">📋 Capturar Resultados</h2>
             <p className="text-xs text-gray-500 mt-0.5">Solo partidos terminados o en curso</p>
           </div>
           <ResultsManager matches={matches} adminId={me.id} />
+        </div>
+
+        {/* Pronósticos por participante */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-800">
+            <h2 className="font-semibold text-white">✏️ Capturar Pronósticos por Participante</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Para DON TANIS, TOÑO o cualquier participante</p>
+          </div>
+          <AdminPronosticosManager
+            participants={participants}
+            matches={matches}
+            phases={phases}
+            adminId={me.id}
+          />
         </div>
       </main>
     </div>

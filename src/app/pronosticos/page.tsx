@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Navigation from "@/components/Navigation";
 import LoginButton from "@/app/auth/login/LoginButton";
 import PronosticosClient from "./PronosticosClient";
+import Link from "next/link";
 import type { Match, Phase } from "@/types/database";
 
 export const revalidate = 0;
@@ -60,9 +61,17 @@ export default async function PronosticosPage() {
     <div className="min-h-screen bg-gray-950">
       <Navigation isAdmin={participant?.is_admin} />
       <main className="pt-12 md:pt-0 md:ml-56 px-4 py-6 max-w-2xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white">⭐ Mis Pronósticos</h1>
-          <p className="text-gray-500 text-sm mt-1">Se guardan automáticamente al escribir</p>
+        <div className="mb-6 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">⭐ Mis Pronósticos</h1>
+            <p className="text-gray-500 text-sm mt-1">Se guardan automáticamente al escribir</p>
+          </div>
+          <Link
+            href="/pronosticos/todos"
+            className="shrink-0 mt-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 border border-gray-700 text-gray-300 hover:border-indigo-600 hover:text-indigo-300 transition-colors"
+          >
+            👥 Ver todos
+          </Link>
         </div>
         <PronosticosClient
           matches={matches}
