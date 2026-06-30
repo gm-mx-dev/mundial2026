@@ -14,6 +14,7 @@ interface Prediction {
 interface Props {
   matches: Match[];
   phases: Phase[];
+  lockedPhaseIds: string[];
   participants: Pick<Participant, "id" | "name" | "is_active">[];
   predictions: Prediction[];
   totals: Record<string, number>; // participantId → total_points
@@ -34,7 +35,9 @@ function abbrev(name: string) {
   return map[name] ?? name.slice(0, 3).toUpperCase();
 }
 
-export default function TodosClient({ matches, phases, participants, predictions, totals }: Props) {
+export default function TodosClient({ matches, phases, lockedPhaseIds, participants, predictions, totals }: Props) {
+  const lockedSet = new Set(lockedPhaseIds);
+
   // Índice: participantId → matchId → prediction
   const idx: Record<string, Record<string, Prediction>> = {};
   for (const p of predictions) {
@@ -45,18 +48,10 @@ export default function TodosClient({ matches, phases, participants, predictions
   // Participantes ordenados por total de puntos desc
   const sorted = [...participants].sort((a, b) => (totals[b.id] ?? 0) - (totals[a.id] ?? 0));
 
-  if (phases.length === 0) {
-    return (
-      <div className="text-center py-16 text-gray-500">
-        <div className="text-4xl mb-3">🔒</div>
-        <p>Los pronósticos se revelan cuando inicia el primer partido de cada fase.</p>
-      </div>
-    );
-  }
-
   // Matches agrupados por fase, en orden
   const phaseGroups = phases.map((ph) => ({
     phase: ph,
+    isLocked: lockedSet.has(ph.id),
     matches: matches.filter((m) => m.phase_id === ph.id),
   }));
 
@@ -88,8 +83,18 @@ export default function TodosClient({ matches, phases, participants, predictions
                   )}
                 >
                   {phaseGroup && (
-                    <div className="text-indigo-400 font-semibold uppercase tracking-widest text-[9px] mb-1 leading-none">
-                      {phaseGroup.phase.display_name}
+                    <div className="mb-1 leading-none">
+                      <span className="text-indigo-400 font-semibold uppercase tracking-widest text-[9px]">
+                        {phaseGroup.phase.display_name}
+                      </span>
+                      <span className={cn(
+                        "ml-1 text-[8px] font-medium px-1 py-0.5 rounded",
+                        phaseGroup.isLocked
+                          ? "text-red-400 bg-red-950/40"
+                          : "text-green-400 bg-green-950/40"
+                      )}>
+                        {phaseGroup.isLocked ? "Cerrada" : "Abierta"}
+                      </span>
                     </div>
                   )}
                   <div className="text-gray-300 font-semibold leading-tight">
@@ -136,7 +141,8 @@ export default function TodosClient({ matches, phases, participants, predictions
 
                 {/* Una celda por partido */}
                 {allMatches.map((m) => {
-                  const pred = idx[p.id]?.[m.id];
+                  const phaseIsLocked = lockedSet.has(m.phase_id);
+                  const pred = phaseIsLocked ? idx[p.id]?.[m.id] : undefined;
                   const hasPred = pred && pred.home_score !== null && pred.away_score !== null;
                   const pts = pred?.points_earned;
                   const hasResult = m.home_score !== null;
@@ -151,7 +157,9 @@ export default function TodosClient({ matches, phases, participants, predictions
                         hasResult && pts === 0 && "bg-gray-900/20",
                       )}
                     >
-                      {hasPred ? (
+                      {!phaseIsLocked ? (
+                        <span className="text-gray-800 text-[10px]">🔒</span>
+                      ) : hasPred ? (
                         <div>
                           <div className={cn(
                             "font-bold text-xs leading-tight",

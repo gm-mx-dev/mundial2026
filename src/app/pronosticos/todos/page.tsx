@@ -30,17 +30,21 @@ export default async function TodosPage() {
 
   // Solo fases donde ya empezó el primer partido
   const now = new Date();
-  const lockedPhases = phases.filter((ph) => {
-    const phMatches = matches.filter((m) => m.phase_id === ph.id);
-    const first = phMatches.reduce<Date | null>((min, m) => {
-      const d = new Date(m.kickoff_at);
-      return min === null || d < min ? d : min;
-    }, null);
-    return first !== null && first <= now;
-  });
+  const lockedPhaseIds = new Set(
+    phases
+      .filter((ph) => {
+        const phMatches = matches.filter((m) => m.phase_id === ph.id);
+        const first = phMatches.reduce<Date | null>((min, m) => {
+          const d = new Date(m.kickoff_at);
+          return min === null || d < min ? d : min;
+        }, null);
+        return first !== null && first <= now;
+      })
+      .map((ph) => ph.id)
+  );
 
   const lockedMatchIds = matches
-    .filter((m) => lockedPhases.some((ph) => ph.id === m.phase_id))
+    .filter((m) => lockedPhaseIds.has(m.phase_id))
     .map((m) => m.id);
 
   let allPredictions: {
@@ -66,12 +70,13 @@ export default async function TodosPage() {
         <div className="mb-4 px-4">
           <h1 className="text-2xl font-bold text-white">👥 Pronósticos de Todos</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Solo fases iniciadas · Scroll horizontal para ver más partidos
+            Fases cerradas: pronósticos visibles · Fases abiertas: se revelan al iniciar
           </p>
         </div>
         <TodosClient
           matches={matches}
-          phases={lockedPhases}
+          phases={phases}
+          lockedPhaseIds={[...lockedPhaseIds]}
           participants={participants}
           predictions={allPredictions}
           totals={totals}

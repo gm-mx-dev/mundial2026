@@ -17,7 +17,7 @@ export default async function HomePage() {
     supabase
       .from("matches")
       .select("*")
-      .eq("status", "scheduled")
+      .gt("kickoff_at", new Date().toISOString())
       .order("kickoff_at")
       .limit(1),
   ]);

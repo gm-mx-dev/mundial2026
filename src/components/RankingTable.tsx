@@ -3,9 +3,6 @@ import { cn } from "@/lib/utils";
 import FlagIcon from "@/components/FlagIcon";
 
 function posLabel(position: number): string {
-  if (position === 1) return "🥇";
-  if (position === 2) return "🥈";
-  if (position === 3) return "🥉";
   return `${position}°`;
 }
 
