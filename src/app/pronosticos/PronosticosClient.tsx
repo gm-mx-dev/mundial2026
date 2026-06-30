@@ -122,9 +122,11 @@ export default function PronosticosClient({ matches, phases, participantId, init
                       const isFinished = match.status === "finished";
                       const isMatchToday = toMxDateKey(match.kickoff_at) === todayKey;
                       const pts = pred.points_earned;
-                      const penNote = match.penalty_winner
-                        ? `${match.penalty_winner === "home" ? match.home_team : match.away_team} avanza (pen.)`
-                        : null;
+                      const hasFinalResult = isFinished && match.home_score_final !== null && (
+                        match.penalty_winner !== null ||
+                        match.home_score_final !== match.home_score ||
+                        match.away_score_final !== match.away_score
+                      );
 
                       return (
                         <div
@@ -240,7 +242,7 @@ export default function PronosticosClient({ matches, phases, participantId, init
                                 <span className="text-xs text-gray-500 font-medium">
                                   {isLive
                                     ? (match.current_minute ? `${match.current_minute}'` : "⚡")
-                                    : "90' →"}
+                                    : "90'"}
                                 </span>
                                 <span className={cn(
                                   "text-sm font-bold tabular-nums",
@@ -251,14 +253,19 @@ export default function PronosticosClient({ matches, phases, participantId, init
                                 )}>
                                   {match.home_score} – {match.away_score}
                                 </span>
-                                {isFinished && (
-                                  <span className="text-xs text-gray-600 hidden sm:inline">cuenta</span>
-                                )}
                               </div>
 
-                              {/* Penales */}
-                              {penNote && (
-                                <span className="text-xs text-gray-500 italic">{penNote}</span>
+                              {/* Resultado final (ET/penales) — solo si aplica */}
+                              {hasFinalResult && (
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-700/40 bg-gray-800/40">
+                                  <span className="text-xs text-gray-600 font-medium">Final</span>
+                                  <span className="text-sm font-bold tabular-nums text-gray-400">
+                                    {match.home_score_final} – {match.away_score_final}
+                                  </span>
+                                  {match.penalty_winner && (
+                                    <span className="text-xs text-gray-600">pen.</span>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )}
