@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Navigation from "@/components/Navigation";
 import BolsaCard from "@/components/BolsaCard";
 import RankingRealtime from "@/components/RankingRealtime";
+import CountdownTimer from "@/components/CountdownTimer";
 import type { RankingRow, BolsaInfo, Match } from "@/types/database";
 import { formatDateTime } from "@/lib/utils";
 
@@ -41,17 +42,20 @@ export default async function HomePage() {
           <p className="text-gray-500 text-sm mt-1">Tabla de posiciones en tiempo real</p>
         </div>
 
-        {/* Próximo partido */}
+        {/* Próximo partido + countdown */}
         {nextMatch && (
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4 flex items-center justify-between">
-            <div>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
               <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Próximo partido</div>
-              <div className="font-semibold text-white">
+              <div className="font-semibold text-white truncate">
                 {nextMatch.home_team} vs {nextMatch.away_team}
               </div>
-              <div className="text-sm text-indigo-400 mt-0.5">{formatDateTime(nextMatch.kickoff_at)}</div>
+              <div className="text-xs text-gray-500 mt-0.5">{formatDateTime(nextMatch.kickoff_at)}</div>
             </div>
-            <div className="text-3xl">🔜</div>
+            <div className="shrink-0 text-right">
+              <div className="text-xs text-gray-600 mb-1">Inicia en</div>
+              <CountdownTimer kickoffAt={nextMatch.kickoff_at} />
+            </div>
           </div>
         )}
 

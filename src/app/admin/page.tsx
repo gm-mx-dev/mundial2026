@@ -4,6 +4,7 @@ import Navigation from "@/components/Navigation";
 import ParticipantsManager from "./ParticipantsManager";
 import ResultsManager from "./ResultsManager";
 import AdminPronosticosManager from "./AdminPronosticosManager";
+import AuditLog from "./AuditLog";
 import type { Participant, Match, Phase, BolsaInfo } from "@/types/database";
 
 export const revalidate = 0;
@@ -87,7 +88,7 @@ export default async function AdminPage() {
         </div>
 
         {/* Pronósticos por participante */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mb-6">
           <div className="px-4 py-3 border-b border-gray-800">
             <h2 className="font-semibold text-white">✏️ Capturar Pronósticos por Participante</h2>
             <p className="text-xs text-gray-500 mt-0.5">Para DON TANIS, TOÑO o cualquier participante</p>
@@ -98,6 +99,15 @@ export default async function AdminPage() {
             phases={phases}
             adminId={me.id}
           />
+        </div>
+
+        {/* Bitácora */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-800">
+            <h2 className="font-semibold text-white">📜 Bitácora de Cambios</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Registro de todas las acciones en la app</p>
+          </div>
+          <AuditLog />
         </div>
       </main>
     </div>
