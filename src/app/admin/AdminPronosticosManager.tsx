@@ -89,6 +89,16 @@ export default function AdminPronosticosManager({ participants, matches, phases,
         after_value: { home_score: pred.home_score, away_score: pred.away_score },
         reason: isOverride ? reason : "Ingresado por admin",
       });
+
+      // Si el partido ya tiene resultado, recalcular puntos inmediatamente
+      if (match.home_score !== null && match.away_score !== null) {
+        await supabase.rpc("calculate_points", {
+          p_match_id: match.id,
+          p_home_score: match.home_score,
+          p_away_score: match.away_score,
+        });
+      }
+
       setSaveStatus((s) => ({ ...s, [match.id]: "saved" }));
       setTimeout(() => setSaveStatus((s) => ({ ...s, [match.id]: "idle" })), 2500);
     } else {
