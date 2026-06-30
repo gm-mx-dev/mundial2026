@@ -86,4 +86,99 @@ export default async function PartidosPage() {
                           <div className={`h-px flex-1 ${isToday ? "bg-yellow-500/40" : "bg-gray-800"}`} />
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${
                             isToday
-                              ? "b
+                              ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/40"
+                              : "text-gray-500 border border-gray-800"
+                          }`}>
+                            {isToday ? "⚽ HOY — " : ""}{formatDayHeader(dayKey)}
+                          </span>
+                          <div className={`h-px flex-1 ${isToday ? "bg-yellow-500/40" : "bg-gray-800"}`} />
+                        </div>
+
+                        {/* Partidos del día */}
+                        <div className={`bg-gray-900 border rounded-xl divide-y overflow-hidden ${
+                          isToday
+                            ? "border-yellow-500/30 divide-yellow-900/20"
+                            : "border-gray-800 divide-gray-800/60"
+                        }`}>
+                          {dayMatches.map((match) => {
+                            const isLive = match.status === "live";
+                            const isFinished = match.status === "finished";
+                            const matchDay = toMxDateKey(match.kickoff_at);
+                            const isMatchToday = matchDay === todayKey;
+
+                            return (
+                              <div
+                                key={match.id}
+                                className={`px-4 py-3 ${
+                                  isLive ? "bg-green-950/25" : isMatchToday && !isFinished ? "bg-yellow-950/10" : ""
+                                }`}
+                              >
+                                {/* Header: hora y estado */}
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-xs text-gray-500">{formatDateTime(match.kickoff_at)}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    {isMatchToday && !isLive && !isFinished && (
+                                      <span className="text-xs font-medium text-yellow-400 bg-yellow-500/10 border border-yellow-500/30 px-1.5 py-0.5 rounded-full">
+                                        HOY
+                                      </span>
+                                    )}
+                                    <span className={`text-xs font-medium flex items-center gap-1 ${
+                                      isLive ? "text-green-400" : isFinished ? "text-gray-500" : "text-gray-600"
+                                    }`}>
+                                      {isLive && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
+                                      )}
+                                      {isLive
+                                        ? `En vivo${match.current_minute ? ` · ${match.current_minute}'` : ""}`
+                                        : isFinished ? "Finalizado" : "Pendiente"}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Equipos y marcador */}
+                                <div className="flex items-center justify-between gap-2">
+                                  {/* Local */}
+                                  <div className="flex-1 flex items-center justify-end">
+                                    <span className="font-medium text-white text-sm text-right leading-tight">
+                                      {match.home_team}
+                                    </span>
+                                    <TeamFlag team={match.home_team} side="home" />
+                                  </div>
+
+                                  {/* Marcador */}
+                                  <div className="flex items-center shrink-0 px-2 min-w-[56px] justify-center">
+                                    {isFinished || isLive ? (
+                                      <span className={`text-lg font-bold tabular-nums ${
+                                        isLive ? "text-green-300" : "text-white"
+                                      }`}>
+                                        {match.home_score} – {match.away_score}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-600 text-sm font-medium">vs</span>
+                                    )}
+                                  </div>
+
+                                  {/* Visitante */}
+                                  <div className="flex-1 flex items-center">
+                                    <TeamFlag team={match.away_team} side="away" />
+                                    <span className="font-medium text-white text-sm leading-tight">
+                                      {match.away_team}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </main>
+    </div>
+  );
+}

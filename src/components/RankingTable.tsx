@@ -65,4 +65,19 @@ export default function RankingTable({ rows }: { rows: RankingRow[] }) {
                 <td className="py-3 px-2 text-gray-400 text-xs hidden md:table-cell">
                   {row.champion_pick ? (
                     <span className="flex items-center gap-1.5">
-                      {/* eslint-disable-next-
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {getTeamFlagUrl(row.champion_pick) && (
+                        <img src={getTeamFlagUrl(row.champion_pick)} alt={row.champion_pick} width={20} height={13} className="rounded-[2px]" />
+                      )}
+                      {row.champion_pick}
+                    </span>
+                  ) : "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
