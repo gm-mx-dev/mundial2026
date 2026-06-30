@@ -12,18 +12,23 @@ export default async function PronosticosPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4">🔒</div>
-          <h2 className="text-xl font-bold text-white mb-2">Inicia sesión para continuar</h2>
-          <p className="text-gray-400 text-sm mb-6">Necesitas una cuenta para capturar tus pronósticos</p>
-          <a
-            href="/auth/login"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-medium transition-colors"
-          >
-            Entrar con Google
-          </a>
-        </div>
+      <div className="min-h-screen bg-gray-950">
+        <Navigation />
+        <main className="pt-12 md:pt-0 md:ml-56 px-4 py-6 max-w-2xl flex items-center justify-center min-h-[80vh]">
+          <div className="text-center">
+            <div className="text-5xl mb-4">🔒</div>
+            <h2 className="text-xl font-bold text-white mb-2">Inicia sesión para ver tus pronósticos</h2>
+            <p className="text-gray-400 text-sm mb-6">
+              Te mandamos un link a tu correo, sin contraseña
+            </p>
+            <a
+              href="/auth/login"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold text-sm transition-colors inline-block"
+            >
+              Iniciar sesión ✉️
+            </a>
+          </div>
+        </main>
       </div>
     );
   }
