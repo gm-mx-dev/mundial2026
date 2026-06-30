@@ -2,7 +2,12 @@ import type { RankingRow } from "@/types/database";
 import { cn } from "@/lib/utils";
 import FlagIcon from "@/components/FlagIcon";
 
-const medalEmoji = ["🥇", "🥈", "🥉"];
+function posLabel(position: number): string {
+  if (position === 1) return "🥇";
+  if (position === 2) return "🥈";
+  if (position === 3) return "🥉";
+  return `${position}°`;
+}
 
 export default function RankingTable({ rows }: { rows: RankingRow[] }) {
   if (rows.length === 0) {
@@ -18,7 +23,8 @@ export default function RankingTable({ rows }: { rows: RankingRow[] }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-800 text-gray-400 text-xs uppercase tracking-wide">
-            <th className="text-left py-2 pl-3 pr-2 font-medium">#</th>
+            <th className="text-center py-2 pl-3 pr-1 font-medium w-8 text-gray-600">#</th>
+            <th className="text-center py-2 px-1 font-medium w-10">Pos</th>
             <th className="text-left py-2 px-2 font-medium">Participante</th>
             <th className="text-center py-2 px-2 font-medium">Pts</th>
             <th className="text-center py-2 px-2 font-medium hidden sm:table-cell">Exactos</th>
@@ -28,7 +34,7 @@ export default function RankingTable({ rows }: { rows: RankingRow[] }) {
         </thead>
         <tbody className="divide-y divide-gray-900">
           {rows.map((row, idx) => {
-            const isTop3 = idx < 3;
+            const isTop3 = row.position <= 3;
             return (
               <tr
                 key={row.id}
@@ -37,18 +43,26 @@ export default function RankingTable({ rows }: { rows: RankingRow[] }) {
                   isTop3 ? "bg-indigo-950/20" : "hover:bg-gray-900/50"
                 )}
               >
-                <td className="py-3 pl-3 pr-2">
+                {/* Número secuencial — para saber cuántos somos */}
+                <td className="py-3 pl-3 pr-1 text-center">
+                  <span className="text-xs text-gray-700 font-medium">{idx + 1}</span>
+                </td>
+
+                {/* Posición real con empates */}
+                <td className="py-3 px-1 text-center">
                   <span className={cn(
                     "font-bold text-sm",
-                    idx === 0 && "text-yellow-400",
-                    idx === 1 && "text-gray-400",
-                    idx === 2 && "text-orange-400",
-                    idx > 2  && "text-gray-600"
+                    row.position === 1 && "text-yellow-400",
+                    row.position === 2 && "text-gray-300",
+                    row.position === 3 && "text-orange-400",
+                    row.position > 3  && "text-gray-500"
                   )}>
-                    {idx < 3 ? medalEmoji[idx] : idx + 1}
+                    {posLabel(row.position)}
                   </span>
                 </td>
+
                 <td className="py-3 px-2 font-medium text-white">{row.name}</td>
+
                 <td className="py-3 px-2 text-center">
                   <span className={cn(
                     "font-bold text-base",
@@ -57,6 +71,7 @@ export default function RankingTable({ rows }: { rows: RankingRow[] }) {
                     {row.total_points}
                   </span>
                 </td>
+
                 <td className="py-3 px-2 text-center text-green-400 font-medium hidden sm:table-cell">
                   {row.exact_scores}
                 </td>
