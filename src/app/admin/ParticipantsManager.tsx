@@ -3,7 +3,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Participant } from "@/types/database";
-import { UserCheck, UserX } from "lucide-react";
+import { UserCheck, UserX, KeyRound } from "lucide-react";
 
 interface Props {
   participants: Participant[];
@@ -15,6 +15,9 @@ export default function ParticipantsManager({ participants: initial, adminId }: 
   const [loading, setLoading] = useState<string | null>(null);
   const [reasonModal, setReasonModal] = useState<{ id: string; name: string } | null>(null);
   const [reason, setReason] = useState("");
+  const [resetModal, setResetModal] = useState<{ username: string; name: string } | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetMsg, setResetMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const supabase = createClient();
 
   const toggle = async (p: Participant, confirmReason?: string) => {
@@ -63,6 +66,23 @@ export default function ParticipantsManager({ participants: initial, adminId }: 
     setReason("");
   };
 
+  const doResetPassword = async () => {
+    if (!resetModal || !newPassword.trim()) return;
+    setLoading(resetModal.username);
+    const { error } = await supabase.rpc("admin_reset_password", {
+      p_username: resetModal.username,
+      p_new_password: newPassword.trim(),
+    });
+    setLoading(null);
+    if (error) {
+      setResetMsg({ ok: false, text: "Error al resetear: " + error.message });
+    } else {
+      setResetMsg({ ok: true, text: `Password de ${resetModal.name} actualizado.` });
+      setResetModal(null);
+      setNewPassword("");
+    }
+  };
+
   const activeCount = participants.filter((p) => p.is_active).length;
   const bolsa = activeCount * 500;
 
@@ -99,27 +119,68 @@ export default function ParticipantsManager({ participants: initial, adminId }: 
               </div>
             </div>
 
-            {/* Toggle */}
-            <button
-              onClick={() => toggle(p)}
-              disabled={loading === p.id}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                p.is_active
-                  ? "bg-red-900/30 text-red-400 hover:bg-red-900/50 border border-red-800/40"
-                  : "bg-green-900/30 text-green-400 hover:bg-green-900/50 border border-green-800/40",
-                loading === p.id && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              {p.is_active ? (
-                <><UserX size={13} /> Desactivar</>
-              ) : (
-                <><UserCheck size={13} /> Activar</>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Reset password */}
+              <button
+                onClick={() => { setResetModal({ username: p.username ?? p.name.toLowerCase(), name: p.name }); setResetMsg(null); }}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white border border-gray-700 transition-all"
+                title="Resetear contraseña"
+              >
+                <KeyRound size={13} />
+              </button>
+              {/* Toggle activo/inactivo */}
+              <button
+                onClick={() => toggle(p)}
+                disabled={loading === p.id}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                  p.is_active
+                    ? "bg-red-900/30 text-red-400 hover:bg-red-900/50 border border-red-800/40"
+                    : "bg-green-900/30 text-green-400 hover:bg-green-900/50 border border-green-800/40",
+                  loading === p.id && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {p.is_active ? (
+                  <><UserX size={13} /> Desactivar</>
+                ) : (
+                  <><UserCheck size={13} /> Activar</>
+                )}
+              </button>
+            </div>
           </div>
         ))}
       </div>
+
+      {/* Mensaje reset */}
+      {resetMsg && (
+        <div className={cn("mx-4 mt-3 px-4 py-2 rounded-lg text-sm", resetMsg.ok ? "bg-green-900/30 text-green-400 border border-green-800/40" : "bg-red-900/30 text-red-400 border border-red-800/40")}>
+          {resetMsg.text}
+        </div>
+      )}
+
+      {/* Modal reset password */}
+      {resetModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="font-bold text-white mb-1">Resetear contraseña — {resetModal.name}</h3>
+            <p className="text-sm text-gray-400 mb-4">Usuario: <span className="font-mono text-gray-300">{resetModal.username}</span></p>
+            <label className="block text-xs text-gray-400 mb-1.5">Nueva contraseña</label>
+            <input
+              type="text"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Ej: Tigre#99"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => { setResetModal(null); setNewPassword(""); }} className="flex-1 py-2 rounded-lg bg-gray-800 text-gray-300 text-sm hover:bg-gray-700 transition-colors">Cancelar</button>
+              <button disabled={!newPassword.trim() || loading === resetModal.username} onClick={doResetPassword} className="flex-1 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-40">
+                {loading === resetModal.username ? "Guardando..." : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal razón de desactivación */}
       {reasonModal && (

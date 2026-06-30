@@ -1,13 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Trophy, Star, ClipboardList, Settings } from "lucide-react";
+import { Trophy, Star, ClipboardList, Settings, UserCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/",            label: "Inicio",      icon: Trophy },
   { href: "/pronosticos", label: "Pronósticos", icon: Star },
   { href: "/partidos",    label: "Partidos",    icon: ClipboardList },
+  { href: "/perfil",      label: "Mi Perfil",   icon: UserCircle },
   { href: "/admin",       label: "Admin",       icon: Settings, adminOnly: true },
 ];
 

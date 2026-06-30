@@ -8,6 +8,7 @@ export type Participant = {
   needs_proxy: boolean;
   champion_pick: string | null;
   fee_paid: boolean;
+  username: string | null;
   deactivated_reason: string | null;
   deactivated_at: string | null;
   created_at: string;
