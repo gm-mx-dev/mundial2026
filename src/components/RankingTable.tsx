@@ -45,7 +45,7 @@ export default function RankingTable({ rows }: { rows: RankingRow[] }) {
                     idx === 2 && "text-orange-400",
                     idx > 2  && "text-gray-600"
                   )}>
-                    {idx < 3 ? medalEmoji[idx] : row.position}
+                    {idx < 3 ? medalEmoji[idx] : idx + 1}
                   </span>
                 </td>
                 <td className="py-3 px-2 font-medium text-white">{row.name}</td>
