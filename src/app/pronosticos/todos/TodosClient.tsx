@@ -67,35 +67,31 @@ export default function TodosClient({ matches, phases, participants, predictions
     <div className="overflow-x-auto -mx-4 px-4">
       <table className="border-collapse text-xs" style={{ minWidth: `${120 + allMatches.length * 72}px` }}>
 
-        {/* ── Cabecera fases ── */}
+        {/* ── Cabecera única (sticky vertical) ── */}
         <thead>
           <tr>
-            {/* Celda esquina */}
-            <th className="sticky left-0 z-20 bg-gray-950 border-b border-r border-gray-800 py-2 px-3 text-left min-w-[120px]" />
-            {phaseGroups.map(({ phase, matches: pm }) => (
-              <th
-                key={phase.id}
-                colSpan={pm.length}
-                className="border-b border-r border-gray-800 py-1.5 px-2 text-center text-indigo-400 font-semibold uppercase tracking-widest bg-gray-950"
-              >
-                {phase.display_name}
-              </th>
-            ))}
-          </tr>
-
-          {/* ── Cabecera partidos ── */}
-          <tr>
-            {/* Columna nombre + pts */}
-            <th className="sticky left-0 z-20 bg-gray-900 border-b border-r border-gray-700 py-2 px-3 text-left text-gray-400 font-medium">
+            {/* Esquina: sticky horizontal + vertical */}
+            <th className="sticky left-0 top-12 md:top-0 z-30 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-3 text-left text-gray-400 font-medium min-w-[120px]">
               Participante
             </th>
-            {allMatches.map((m) => {
+
+            {allMatches.map((m, i) => {
               const hasResult = m.home_score !== null;
+              // Primera columna de cada fase → mostrar nombre de fase encima
+              const phaseGroup = phaseGroups.find((g) => g.matches[0]?.id === m.id);
               return (
                 <th
                   key={m.id}
-                  className="border-b border-r border-gray-800 py-1.5 px-1 text-center bg-gray-900 min-w-[68px]"
+                  className={cn(
+                    "sticky top-12 md:top-0 z-10 border-b-2 border-r border-gray-800 py-1.5 px-1 text-center bg-gray-900 min-w-[68px]",
+                    phaseGroup ? "border-l-2 border-l-indigo-800" : ""
+                  )}
                 >
+                  {phaseGroup && (
+                    <div className="text-indigo-400 font-semibold uppercase tracking-widest text-[9px] mb-1 leading-none">
+                      {phaseGroup.phase.display_name}
+                    </div>
+                  )}
                   <div className="text-gray-300 font-semibold leading-tight">
                     {abbrev(m.home_team)}
                   </div>
