@@ -2,7 +2,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useState } from "react";
 
-export default function LoginButton() {
+export default function LoginButton({ redirectTo = "/" }: { redirectTo?: string }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -37,7 +37,7 @@ export default function LoginButton() {
     // Email válido → mandar magic link
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.toLowerCase().trim(),
-      options: { emailRedirectTo: `${location.origin}/auth/callback` },
+      options: { emailRedirectTo: `${location.origin}/auth/callback?next=${redirectTo}` },
     });
 
     if (otpError) {

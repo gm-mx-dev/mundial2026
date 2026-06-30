@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Quiniela Mundial 2026",
   description: "Quiniela familiar del Mundial FIFA 2026",
   manifest: "/manifest.json",
+  icons: { icon: "/favicon.svg", apple: "/favicon.svg" },
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Quiniela 2026" },
 };
 
