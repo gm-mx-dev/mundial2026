@@ -263,7 +263,7 @@ export default function PronosticosClient({ matches, phases, participantId, init
                                     {match.home_score_final} – {match.away_score_final}
                                   </span>
                                   {match.penalty_winner && (
-                                    <span className="text-xs text-gray-600">pen.</span>
+                                    <span className="text-xs text-gray-600">Penales</span>
                                   )}
                                 </div>
                               )}
