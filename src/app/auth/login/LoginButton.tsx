@@ -15,13 +15,33 @@ export default function LoginButton() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
+    // Verificar que el email está registrado en la quiniela
+    const { data: participant } = await supabase
+      .from("participants")
+      .select("id, is_active")
+      .eq("email", email.toLowerCase().trim())
+      .single();
+
+    if (!participant) {
+      setError("Este correo no está registrado en la quiniela. Verifica con el administrador.");
+      setLoading(false);
+      return;
+    }
+
+    if (!participant.is_active) {
+      setError("Tu cuenta está desactivada. Contacta al administrador.");
+      setLoading(false);
+      return;
+    }
+
+    // Email válido → mandar magic link
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: email.toLowerCase().trim(),
       options: { emailRedirectTo: `${location.origin}/auth/callback` },
     });
 
-    if (error) {
-      setError("No se pudo enviar el link. Verifica tu correo.");
+    if (otpError) {
+      setError("No se pudo enviar el link. Intenta de nuevo.");
     } else {
       setSent(true);
     }
@@ -36,6 +56,7 @@ export default function LoginButton() {
         <p className="text-gray-400 text-sm">
           Revisa tu correo <span className="text-indigo-400">{email}</span> y toca el link para entrar.
         </p>
+        <p className="text-gray-500 text-xs mt-2">Revisa también tu carpeta de spam.</p>
         <button
           onClick={() => { setSent(false); setEmail(""); }}
           className="mt-4 text-xs text-gray-500 hover:text-gray-300"
@@ -59,15 +80,19 @@ export default function LoginButton() {
           className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
       </div>
-      {error && <p className="text-red-400 text-xs">{error}</p>}
+      {error && (
+        <p className="text-red-400 text-xs bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
       <button
         type="submit"
         disabled={loading || !email}
         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl font-semibold text-sm transition-colors disabled:opacity-50"
       >
-        {loading ? "Enviando..." : "Enviar link de acceso ✉️"}
+        {loading ? "Verificando..." : "Enviar link de acceso ✉️"}
       </button>
-      <p className="text-center text-xs text-gray-600">
+      <p className="text-center text-xs text-gray-600 mt-1">
         Te mandamos un link a tu correo, sin contraseña
       </p>
     </form>
