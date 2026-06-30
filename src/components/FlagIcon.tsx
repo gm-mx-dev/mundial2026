@@ -2,7 +2,8 @@
  * Banderas de los 32 equipos del Mundial 2026.
  * Usa el paquete country-flag-icons (SVGs inline, sin CDN externo).
  */
-import type { ComponentType, SVGProps } from "react";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+import type { ComponentType } from "react";
 import AR from "country-flag-icons/react/3x2/AR";
 import AT from "country-flag-icons/react/3x2/AT";
 import AU from "country-flag-icons/react/3x2/AU";
@@ -36,7 +37,8 @@ import SN from "country-flag-icons/react/3x2/SN";
 import US from "country-flag-icons/react/3x2/US";
 import ZA from "country-flag-icons/react/3x2/ZA";
 
-type FlagComp = ComponentType<SVGProps<SVGSVGElement> & { title?: string }>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FlagComp = ComponentType<any>;
 
 const TEAM_FLAGS: Record<string, FlagComp> = {
   "Argentina":      AR,
