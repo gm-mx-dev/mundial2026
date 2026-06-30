@@ -131,13 +131,23 @@ export default async function PartidosPage() {
                                   </div>
 
                                   {/* Marcador */}
-                                  <div className="flex items-center shrink-0 px-2 min-w-[56px] justify-center">
+                                  <div className="flex flex-col items-center shrink-0 px-2 min-w-[72px] justify-center">
                                     {isFinished || isLive ? (
-                                      <span className={`text-lg font-bold tabular-nums ${
-                                        isLive ? "text-green-300" : "text-white"
-                                      }`}>
-                                        {match.home_score} – {match.away_score}
-                                      </span>
+                                      <>
+                                        <span className={`text-lg font-bold tabular-nums leading-tight ${
+                                          isLive ? "text-green-300" : "text-white"
+                                        }`}>
+                                          {match.home_score} – {match.away_score}
+                                        </span>
+                                        {!isLive && (
+                                          <span className="text-[10px] text-gray-600 mt-0.5">90 min</span>
+                                        )}
+                                        {match.penalty_winner && (
+                                          <span className="text-[10px] text-indigo-400 mt-0.5 text-center leading-tight">
+                                            {match.penalty_winner === "home" ? match.home_team : match.away_team} pen.
+                                          </span>
+                                        )}
+                                      </>
                                     ) : (
                                       <span className="text-gray-600 text-sm font-medium">vs</span>
                                     )}

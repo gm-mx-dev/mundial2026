@@ -41,14 +41,18 @@ export default async function PronosticosPage() {
   const phases: Phase[] = phasesRes.data ?? [];
   const participant = participantRes.data;
 
-  let predictions: Record<string, { home_score: number | null; away_score: number | null }> = {};
+  let predictions: Record<string, { home_score: number | null; away_score: number | null; points_earned: number | null }> = {};
   if (participant) {
     const { data } = await supabase
       .from("predictions")
-      .select("match_id, home_score, away_score")
+      .select("match_id, home_score, away_score, points_earned")
       .eq("participant_id", participant.id);
     predictions = Object.fromEntries(
-      (data ?? []).map((p) => [p.match_id, { home_score: p.home_score, away_score: p.away_score }])
+      (data ?? []).map((p) => [p.match_id, {
+        home_score: p.home_score,
+        away_score: p.away_score,
+        points_earned: p.points_earned,
+      }])
     );
   }
 

@@ -31,8 +31,16 @@ export type Match = {
   home_team: string;
   away_team: string;
   kickoff_at: string;
+  /** Goles local en 90 min — es lo que cuenta para la quiniela y dispara el trigger */
   home_score: number | null;
+  /** Goles visitante en 90 min — es lo que cuenta para la quiniela y dispara el trigger */
   away_score: number | null;
+  /** Resultado final incluyendo tiempo extra (solo display) */
+  home_score_final: number | null;
+  /** Resultado final incluyendo tiempo extra (solo display) */
+  away_score_final: number | null;
+  /** Quién avanzó en penales: 'home' | 'away' | null (solo display) */
+  penalty_winner: "home" | "away" | null;
   status: "scheduled" | "live" | "finished";
   api_match_id: string | null;
   current_minute: number | null;
