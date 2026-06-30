@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Navigation from "@/components/Navigation";
 import BolsaCard from "@/components/BolsaCard";
-import RankingTable from "@/components/RankingTable";
+import RankingRealtime from "@/components/RankingRealtime";
 import type { RankingRow, BolsaInfo, Match } from "@/types/database";
 import { formatDateTime } from "@/lib/utils";
 
@@ -66,7 +66,7 @@ export default async function HomePage() {
             <h2 className="font-semibold text-white">Tabla de posiciones</h2>
             <span className="text-xs text-gray-500">{rows.length} participantes</span>
           </div>
-          <RankingTable rows={rows} />
+          <RankingRealtime initialRows={rows} />
         </div>
 
         {/* Leyenda de puntos */}

@@ -34,6 +34,7 @@ export type Match = {
   away_score: number | null;
   status: "scheduled" | "live" | "finished";
   api_match_id: string | null;
+  current_minute: number | null;
 };
 
 export type Prediction = {
