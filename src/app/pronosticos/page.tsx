@@ -20,7 +20,7 @@ export default async function PronosticosPage() {
             <div className="text-center mb-8">
               <div className="text-6xl mb-4">⚽</div>
               <h1 className="text-2xl font-bold text-white">Quiniela Mundial 2026</h1>
-              <p className="text-gray-400 mt-2 text-sm">Ingresa tu correo y te mandamos un link para entrar, sin contraseña</p>
+              <p className="text-gray-400 mt-2 text-sm">Ingresa tu usuario y contraseña para ver tus pronósticos</p>
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
               <LoginButton redirectTo="/pronosticos" />

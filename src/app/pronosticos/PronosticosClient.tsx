@@ -1,7 +1,7 @@
 "use client";
 import { useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { isMatchLocked, formatDateTime, cn } from "@/lib/utils";
+import { formatDateTime, cn } from "@/lib/utils";
 import type { Match, Phase } from "@/types/database";
 import { Check, Lock, Clock } from "lucide-react";
 
@@ -46,21 +46,36 @@ export default function PronosticosClient({ matches, phases, participantId, init
     });
   };
 
-  const matchesByPhase = phases.map((ph) => ({
-    phase: ph,
-    matches: matches.filter((m) => m.phase_id === ph.id),
-  })).filter((g) => g.matches.length > 0);
+  const now = new Date();
+
+  const matchesByPhase = phases.map((ph) => {
+    const phaseMatches = matches.filter((m) => m.phase_id === ph.id);
+    // Phase is locked once the first match of the phase has started
+    const firstKickoff = phaseMatches.reduce<Date | null>((min, m) => {
+      const d = new Date(m.kickoff_at);
+      return min === null || d < min ? d : min;
+    }, null);
+    const phaseLocked = firstKickoff !== null && firstKickoff <= now;
+    return { phase: ph, matches: phaseMatches, phaseLocked };
+  }).filter((g) => g.matches.length > 0);
 
   return (
     <div className="space-y-6">
-      {matchesByPhase.map(({ phase, matches: phaseMatches }) => (
+      {matchesByPhase.map(({ phase, matches: phaseMatches, phaseLocked }) => (
         <div key={phase.id}>
-          <h2 className="text-xs uppercase tracking-widest text-gray-500 font-semibold mb-3">
-            {phase.display_name}
-          </h2>
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-xs uppercase tracking-widest text-gray-500 font-semibold">
+              {phase.display_name}
+            </h2>
+            {phaseLocked && (
+              <span className="text-xs text-red-500/70 flex items-center gap-1">
+                <Lock size={10} /> cerrada
+              </span>
+            )}
+          </div>
           <div className="space-y-3">
             {phaseMatches.map((match) => {
-              const locked = isMatchLocked(match.kickoff_at) || match.status === "finished";
+              const locked = phaseLocked;
               const pred = predictions[match.id] ?? { home_score: null, away_score: null };
               const status = saveStatus[match.id] ?? "idle";
               const hasResult = match.home_score !== null;
