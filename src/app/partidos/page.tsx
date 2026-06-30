@@ -1,25 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import Navigation from "@/components/Navigation";
-import { formatDateTime, getTeamFlagUrl, toMxDateKey, formatDayHeader } from "@/lib/utils";
+import FlagIcon from "@/components/FlagIcon";
+import { formatDateTime, toMxDateKey, formatDayHeader } from "@/lib/utils";
 import type { Match, Phase } from "@/types/database";
 
 export const revalidate = 30;
-
-function TeamFlag({ team, side }: { team: string; side: "home" | "away" }) {
-  const url = getTeamFlagUrl(team, 24);
-  if (!url) return null;
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={url}
-      alt={team}
-      width={24}
-      height={16}
-      className={`inline-block rounded-[2px] shadow-sm shrink-0 ${side === "home" ? "ml-2" : "mr-2"}`}
-      loading="lazy"
-    />
-  );
-}
 
 function getTodayMxKey(): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -142,7 +127,7 @@ export default async function PartidosPage() {
                                     <span className="font-medium text-white text-sm text-right leading-tight">
                                       {match.home_team}
                                     </span>
-                                    <TeamFlag team={match.home_team} side="home" />
+                                    <FlagIcon team={match.home_team} className="w-6 h-4 rounded-sm shrink-0 ml-2" />
                                   </div>
 
                                   {/* Marcador */}
@@ -160,7 +145,7 @@ export default async function PartidosPage() {
 
                                   {/* Visitante */}
                                   <div className="flex-1 flex items-center">
-                                    <TeamFlag team={match.away_team} side="away" />
+                                    <FlagIcon team={match.away_team} className="w-6 h-4 rounded-sm shrink-0 mr-2" />
                                     <span className="font-medium text-white text-sm leading-tight">
                                       {match.away_team}
                                     </span>

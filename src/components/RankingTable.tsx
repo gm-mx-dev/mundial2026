@@ -1,5 +1,6 @@
 import type { RankingRow } from "@/types/database";
-import { cn, getTeamFlagUrl } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import FlagIcon from "@/components/FlagIcon";
 
 const medalEmoji = ["🥇", "🥈", "🥉"];
 
@@ -65,10 +66,7 @@ export default function RankingTable({ rows }: { rows: RankingRow[] }) {
                 <td className="py-3 px-2 text-gray-400 text-xs hidden md:table-cell">
                   {row.champion_pick ? (
                     <span className="flex items-center gap-1.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {getTeamFlagUrl(row.champion_pick) && (
-                        <img src={getTeamFlagUrl(row.champion_pick)} alt={row.champion_pick} width={20} height={13} className="rounded-[2px]" />
-                      )}
+                      <FlagIcon team={row.champion_pick} className="w-5 h-3.5 rounded-sm shrink-0" />
                       {row.champion_pick}
                     </span>
                   ) : "—"}
