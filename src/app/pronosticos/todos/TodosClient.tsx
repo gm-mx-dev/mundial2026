@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { Match, Phase, Participant } from "@/types/database";
+import FlagIcon from "@/components/FlagIcon";
 
 interface Prediction {
   participant_id: string;
@@ -15,7 +16,7 @@ interface Props {
   matches: Match[];
   phases: Phase[];
   lockedPhaseIds: number[];
-  participants: Pick<Participant, "id" | "name" | "is_active">[];
+  participants: Pick<Participant, "id" | "name" | "is_active" | "champion_pick">[];
   predictions: Prediction[];
   totals: Record<string, number>; // participantId → total_points
 }
@@ -60,14 +61,18 @@ export default function TodosClient({ matches, phases, lockedPhaseIds, participa
 
   return (
     <div className="overflow-x-auto -mx-4 px-4">
-      <table className="border-collapse text-xs" style={{ minWidth: `${120 + allMatches.length * 72}px` }}>
+      <table className="border-collapse text-xs" style={{ minWidth: `${130 + 56 + allMatches.length * 72}px` }}>
 
-        {/* ── Cabecera única (sticky vertical) ── */}
+        {/* ── Cabecera única (sticky vertical en desktop) ── */}
         <thead>
           <tr>
-            {/* Esquina: sticky horizontal + vertical */}
-            <th className="sticky left-0 md:top-0 z-30 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-3 text-left text-gray-400 font-medium min-w-[120px] md:sticky md:top-0">
+            {/* Col 1: Nombre — sticky izquierda */}
+            <th className="sticky left-0 z-30 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-3 text-left text-gray-400 font-medium min-w-[130px] md:top-0">
               Participante
+            </th>
+            {/* Col 2: Campeón — sticky izquierda (segunda columna) */}
+            <th className="sticky left-[130px] z-20 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-2 text-center text-gray-400 font-medium w-[56px]">
+              🏆
             </th>
 
             {allMatches.map((m, i) => {
@@ -124,8 +129,8 @@ export default function TodosClient({ matches, phases, lockedPhaseIds, participa
                 key={p.id}
                 className={rowIdx % 2 === 0 ? "bg-gray-950" : "bg-gray-900/60"}
               >
-                {/* Nombre + total */}
-                <td className="sticky left-0 z-10 border-r border-gray-800 py-2 px-3 font-semibold text-white"
+                {/* Col 1: Nombre + total — sticky */}
+                <td className="sticky left-0 z-20 border-r border-gray-800 py-2 px-3 font-semibold text-white"
                   style={{ background: rowIdx % 2 === 0 ? "#030712" : "rgba(17,24,39,0.6)" }}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -137,6 +142,17 @@ export default function TodosClient({ matches, phases, lockedPhaseIds, participa
                       {total}
                     </span>
                   </div>
+                </td>
+
+                {/* Col 2: Campeón con bandera — sticky */}
+                <td className="sticky left-[130px] z-10 border-r border-gray-800 py-2 px-1 text-center"
+                  style={{ background: rowIdx % 2 === 0 ? "#030712" : "rgba(17,24,39,0.6)" }}
+                >
+                  {p.champion_pick ? (
+                    <FlagIcon team={p.champion_pick} className="w-6 h-4 rounded-sm mx-auto" />
+                  ) : (
+                    <span className="text-gray-800 text-xs">—</span>
+                  )}
                 </td>
 
                 {/* Una celda por partido */}

@@ -13,7 +13,7 @@ export default async function TodosPage() {
   const [matchesRes, phasesRes, participantsRes, meRes, rankingRes] = await Promise.all([
     supabase.from("matches").select("*").order("kickoff_at"),
     supabase.from("phases").select("*").order("sort_order"),
-    supabase.from("participants").select("id, name, is_active").eq("is_active", true).order("name"),
+    supabase.from("participants").select("id, name, is_active, champion_pick").eq("is_active", true).order("name"),
     user
       ? supabase.from("participants").select("is_admin").eq("auth_user_id", user.id).single()
       : Promise.resolve({ data: null }),
@@ -22,7 +22,7 @@ export default async function TodosPage() {
 
   const matches: Match[] = matchesRes.data ?? [];
   const phases: Phase[] = phasesRes.data ?? [];
-  const participants: Pick<Participant, "id" | "name" | "is_active">[] = participantsRes.data ?? [];
+  const participants: Pick<Participant, "id" | "name" | "is_active" | "champion_pick">[] = participantsRes.data ?? [];
 
   // Totales por participante para ordenar filas
   const totals: Record<string, number> = {};
