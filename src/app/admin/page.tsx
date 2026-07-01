@@ -5,6 +5,7 @@ import ParticipantsManager from "./ParticipantsManager";
 import ResultsManager from "./ResultsManager";
 import AdminPronosticosManager from "./AdminPronosticosManager";
 import AuditLog from "./AuditLog";
+import RecalcularButton from "./RecalcularButton";
 import type { Participant, Match, Phase, BolsaInfo } from "@/types/database";
 
 export const revalidate = 0;
@@ -99,6 +100,19 @@ export default async function AdminPage() {
             phases={phases}
             adminId={me.id}
           />
+        </div>
+
+        {/* Recalcular puntos */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mb-6">
+          <div className="px-4 py-3 border-b border-gray-800">
+            <h2 className="font-semibold text-white">🔄 Recalcular Puntos</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Vuelve a calcular los puntos de todos los pronósticos para cada partido con resultado. Útil si algo quedó desincronizado.
+            </p>
+          </div>
+          <div className="px-4 py-4">
+            <RecalcularButton adminId={me.id} />
+          </div>
         </div>
 
         {/* Bitácora */}

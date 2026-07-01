@@ -26,6 +26,7 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   admin_override_prediction:{ label: "Override pronóstico",    color: "text-orange-400" },
   participant_deactivated:  { label: "Participante desactivado", color: "text-red-400" },
   participant_activated:    { label: "Participante activado",  color: "text-green-400" },
+  recalculate_all:          { label: "Recálculo global",        color: "text-yellow-400" },
 };
 
 const FILTER_OPTIONS = [
