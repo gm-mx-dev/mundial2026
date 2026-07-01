@@ -66,6 +66,7 @@ const TEAM_FLAGS: Record<string, FlagComp> = {
   "Marruecos":      MA,
   "México":         MX,
   "Países Bajos":   NL,
+  "Paises Bajos":   NL,  // alias sin acento (valor en BD)
   "Noruega":        NO,
   "Portugal":       PT,
   "Paraguay":       PY,
