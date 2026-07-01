@@ -154,10 +154,10 @@ export default function TodosClient({
                       isFirstOfPhase ? "border-l-2 border-l-indigo-700" : ""
                     )}
                   >
-                    {/* HOME·AWAY en una sola línea — reduce altura del header a ~36px */}
+                    {/* HOME-AWAY en una sola línea — reduce altura del header a ~36px */}
                     <div className="text-[9px] font-bold text-gray-300 tabular-nums leading-tight whitespace-nowrap">
                       <span>{abbrev(m.home_team)}</span>
-                      <span className="text-gray-700 mx-[2px]">·</span>
+                      <span className="text-gray-500 mx-[1px]">-</span>
                       <span>{abbrev(m.away_team)}</span>
                     </div>
                     {/* Marcador si existe */}
