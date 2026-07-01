@@ -1,4 +1,4 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient, tryAdminClient } from "@/lib/supabase/server";
 import Navigation from "@/components/Navigation";
 import TodosClient from "./TodosClient";
 import type { Match, Phase, Participant } from "@/types/database";
@@ -56,9 +56,9 @@ export default async function TodosPage() {
   }[] = [];
 
   if (lockedMatchIds.length > 0) {
-    // Usar service role para leer todos los pronósticos sin restricción de RLS
-    const adminClient = createAdminClient();
-    const { data } = await adminClient
+    // Intentar con service role (sin RLS); si no está disponible, usar cliente normal
+    const queryClient = tryAdminClient() ?? supabase;
+    const { data } = await queryClient
       .from("predictions")
       .select("participant_id, match_id, home_score, away_score, points_earned")
       .in("match_id", lockedMatchIds);

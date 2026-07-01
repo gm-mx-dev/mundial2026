@@ -4,9 +4,26 @@ import { cookies } from "next/headers";
 
 /** Cliente con service role (sin RLS). Solo usar en server components. */
 export function createAdminClient() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY no está configurada. Agrégala en Vercel > Settings > Environment Variables."
+    );
+  }
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    serviceKey,
+    { auth: { persistSession: false } }
+  );
+}
+
+/** Intenta usar service role; si no está disponible, usa el cliente normal. */
+export function tryAdminClient() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) return null;
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceKey,
     { auth: { persistSession: false } }
   );
 }
