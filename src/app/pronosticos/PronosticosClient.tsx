@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatDateTime, toMxDateKey, formatDayHeader, cn } from "@/lib/utils";
 import FlagIcon from "@/components/FlagIcon";
 import type { Match, Phase } from "@/types/database";
-import { Check, Lock, Clock } from "lucide-react";
+import { Check, Lock, Clock, Unlock } from "lucide-react";
 
 interface Props {
   matches: Match[];
@@ -83,9 +83,13 @@ export default function PronosticosClient({ matches, phases, participantId, init
             <h2 className="text-xs uppercase tracking-widest text-indigo-400 font-semibold">
               {phase.display_name}
             </h2>
-            {phaseLocked && (
-              <span className="text-xs text-red-500/70 flex items-center gap-1">
+            {phaseLocked ? (
+              <span className="text-xs text-red-500/60 flex items-center gap-1">
                 <Lock size={10} /> cerrada
+              </span>
+            ) : (
+              <span className="text-xs text-green-400/80 flex items-center gap-1">
+                <Unlock size={10} /> abierta · puedes editar tus pronósticos
               </span>
             )}
           </div>

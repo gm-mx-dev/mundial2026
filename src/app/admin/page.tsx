@@ -6,6 +6,7 @@ import ResultsManager from "./ResultsManager";
 import AdminPronosticosManager from "./AdminPronosticosManager";
 import AuditLog from "./AuditLog";
 import RecalcularButton from "./RecalcularButton";
+import PronosticosStatus from "./PronosticosStatus";
 import type { Participant, Match, Phase, BolsaInfo } from "@/types/database";
 
 export const revalidate = 0;
@@ -77,6 +78,17 @@ export default async function AdminPage() {
             </p>
           </div>
           <ParticipantsManager participants={participants} adminId={me.id} />
+        </div>
+
+        {/* Estado de pronósticos */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mb-6">
+          <div className="px-4 py-3 border-b border-gray-800">
+            <h2 className="font-semibold text-white">📊 Estado de Pronósticos</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Avance de captura para la siguiente fase — los marcados con "admin" los captura el administrador
+            </p>
+          </div>
+          <PronosticosStatus />
         </div>
 
         {/* Resultados */}
