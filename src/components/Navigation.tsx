@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Trophy, Star, ClipboardList, Settings, UserCircle } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Trophy, Star, ClipboardList, Settings, UserCircle, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { href: "/",            label: "Inicio",      icon: Trophy },
@@ -18,7 +19,15 @@ interface NavigationProps {
 
 export default function Navigation({ isAdmin = false }: NavigationProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const items = navItems.filter((i) => !i.adminOnly || isAdmin);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/pronosticos");
+    router.refresh();
+  };
 
   return (
     <>
@@ -43,6 +52,13 @@ export default function Navigation({ isAdmin = false }: NavigationProps) {
               </Link>
             );
           })}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap text-gray-600 hover:text-red-400 transition-colors ml-auto"
+          >
+            <LogOut size={16} />
+            Salir
+          </button>
         </div>
       </nav>
 
@@ -72,6 +88,15 @@ export default function Navigation({ isAdmin = false }: NavigationProps) {
             );
           })}
         </nav>
+        <div className="px-2 pb-6">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-800 hover:text-red-400 transition-colors"
+          >
+            <LogOut size={18} />
+            Cerrar sesión
+          </button>
+        </div>
       </aside>
     </>
   );

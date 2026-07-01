@@ -66,7 +66,7 @@ export default function TodosClient({ matches, phases, lockedPhaseIds, participa
         <thead>
           <tr>
             {/* Esquina: sticky horizontal + vertical */}
-            <th className="sticky left-0 top-12 md:top-0 z-30 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-3 text-left text-gray-400 font-medium min-w-[120px]">
+            <th className="sticky left-0 md:top-0 z-30 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-3 text-left text-gray-400 font-medium min-w-[120px] md:sticky md:top-0">
               Participante
             </th>
 
@@ -78,7 +78,7 @@ export default function TodosClient({ matches, phases, lockedPhaseIds, participa
                 <th
                   key={m.id}
                   className={cn(
-                    "sticky top-12 md:top-0 z-10 border-b-2 border-r border-gray-800 py-1.5 px-1 text-center bg-gray-900 min-w-[68px]",
+                    "md:sticky md:top-0 z-10 border-b-2 border-r border-gray-800 py-1.5 px-1 text-center bg-gray-900 min-w-[68px]",
                     phaseGroup ? "border-l-2 border-l-indigo-800" : ""
                   )}
                 >
