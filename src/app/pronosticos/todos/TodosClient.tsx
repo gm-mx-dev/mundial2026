@@ -160,10 +160,11 @@ export default function TodosClient({
                       <span className="text-gray-500 mx-[1px]">-</span>
                       <span>{abbrev(m.away_team)}</span>
                     </div>
-                    {/* Marcador si existe */}
+                    {/* Marcador 90 min si existe */}
                     {hasResult && (
-                      <div className="text-green-500 font-bold text-[9px] mt-0.5 leading-none tabular-nums">
-                        {m.home_score}–{m.away_score}
+                      <div className="mt-0.5 leading-none tabular-nums">
+                        <span className="text-gray-600 font-normal text-[8px]">90'</span>
+                        <span className="text-green-500 font-bold text-[9px]"> {m.home_score}–{m.away_score}</span>
                       </div>
                     )}
                   </th>
