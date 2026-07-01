@@ -27,6 +27,37 @@ export default function PronosticosClient({ matches, phases, participantId, init
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({});
   const supabase = createClient();
 
+  const now = new Date();
+  const todayKey = getTodayMxKey();
+
+  // Calcular fases con sus datos antes del useState de activePhaseId
+  const matchesByPhase = phases
+    .map((ph) => {
+      const phaseMatches = matches.filter((m) => m.phase_id === ph.id);
+      const firstKickoff = phaseMatches.reduce<Date | null>((min, m) => {
+        const d = new Date(m.kickoff_at);
+        return min === null || d < min ? d : min;
+      }, null);
+      const phaseLocked = firstKickoff !== null && firstKickoff <= now;
+      const dayGroups = phaseMatches.reduce<Map<string, Match[]>>((acc, m) => {
+        const key = toMxDateKey(m.kickoff_at);
+        if (!acc.has(key)) acc.set(key, []);
+        acc.get(key)!.push(m);
+        return acc;
+      }, new Map());
+      return { phase: ph, dayGroups, phaseLocked, hasMatches: phaseMatches.length > 0 };
+    })
+    .filter((g) => g.hasMatches);
+
+  // Default: primera fase abierta; si todas cerradas, la última con partidos
+  const defaultPhaseId = (() => {
+    const open = matchesByPhase.find((g) => !g.phaseLocked);
+    if (open) return open.phase.id;
+    return matchesByPhase[matchesByPhase.length - 1]?.phase.id ?? null;
+  })();
+
+  const [activePhaseId, setActivePhaseId] = useState<number | null>(defaultPhaseId);
+
   const savePrediction = useCallback(async (
     matchId: string,
     home: number | null,
@@ -54,235 +85,246 @@ export default function PronosticosClient({ matches, phases, participantId, init
     });
   };
 
-  const now = new Date();
-  const todayKey = getTodayMxKey();
+  const activeGroup = matchesByPhase.find((g) => g.phase.id === activePhaseId) ?? matchesByPhase[0];
 
-  const matchesByPhase = phases.map((ph) => {
-    const phaseMatches = matches.filter((m) => m.phase_id === ph.id);
-    const firstKickoff = phaseMatches.reduce<Date | null>((min, m) => {
-      const d = new Date(m.kickoff_at);
-      return min === null || d < min ? d : min;
-    }, null);
-    const phaseLocked = firstKickoff !== null && firstKickoff <= now;
+  if (!activeGroup) {
+    return (
+      <p className="text-gray-500 text-sm py-4">No hay partidos disponibles.</p>
+    );
+  }
 
-    const dayGroups = phaseMatches.reduce<Map<string, Match[]>>((acc, m) => {
-      const key = toMxDateKey(m.kickoff_at);
-      if (!acc.has(key)) acc.set(key, []);
-      acc.get(key)!.push(m);
-      return acc;
-    }, new Map());
-
-    return { phase: ph, dayGroups, phaseLocked };
-  }).filter((g) => g.dayGroups.size > 0);
+  const { phase, dayGroups, phaseLocked } = activeGroup;
 
   return (
-    <div className="space-y-8">
-      {matchesByPhase.map(({ phase, dayGroups, phaseLocked }) => (
-        <div key={phase.id}>
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-xs uppercase tracking-widest text-indigo-400 font-semibold">
-              {phase.display_name}
-            </h2>
-            {phaseLocked ? (
-              <span className="text-xs text-red-500/60 flex items-center gap-1">
-                <Lock size={10} /> cerrada · no se pueden editar los pronósticos
-              </span>
-            ) : (
-              <span className="text-xs text-green-400/80 flex items-center gap-1">
-                <Unlock size={10} /> abierta · puedes editar tus pronósticos
-              </span>
-            )}
-          </div>
+    <div className="space-y-4">
 
-          <div className="space-y-4">
-            {Array.from(dayGroups.entries()).map(([dayKey, dayMatches]) => {
-              const isToday = dayKey === todayKey;
-              return (
-                <div key={dayKey}>
-                  {/* Separador de día */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={`h-px flex-1 ${isToday ? "bg-yellow-500/40" : "bg-gray-800"}`} />
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${
-                      isToday
-                        ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/40"
-                        : "text-gray-500 border border-gray-800"
-                    }`}>
-                      {isToday ? "⚽ HOY — " : ""}{formatDayHeader(dayKey)}
-                    </span>
-                    <div className={`h-px flex-1 ${isToday ? "bg-yellow-500/40" : "bg-gray-800"}`} />
-                  </div>
+      {/* Selector de fases */}
+      {matchesByPhase.length > 1 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+          {matchesByPhase.map(({ phase: ph, phaseLocked: locked }) => (
+            <button
+              key={ph.id}
+              onClick={() => setActivePhaseId(ph.id)}
+              className={cn(
+                "shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap",
+                activePhaseId === ph.id
+                  ? locked
+                    ? "bg-gray-700 text-white"
+                    : "bg-indigo-700 text-white"
+                  : "bg-gray-900 border border-gray-800 text-gray-400 hover:text-gray-200 hover:border-gray-700"
+              )}
+            >
+              {ph.display_name}
+              {locked ? " 🔒" : " ✏️"}
+            </button>
+          ))}
+        </div>
+      )}
 
-                  <div className={`bg-gray-900 border rounded-xl divide-y overflow-hidden ${
-                    isToday
-                      ? "border-yellow-500/30 divide-yellow-900/20"
-                      : "border-gray-800 divide-gray-800/60"
-                  }`}>
-                    {dayMatches.map((match) => {
-                      const locked = phaseLocked;
-                      const pred = predictions[match.id] ?? { home_score: null, away_score: null, points_earned: null };
-                      const status = saveStatus[match.id] ?? "idle";
-                      const hasResult = match.home_score !== null && match.away_score !== null;
-                      const isLive = match.status === "live";
-                      const isFinished = match.status === "finished";
-                      const isMatchToday = toMxDateKey(match.kickoff_at) === todayKey;
-                      const pts = pred.points_earned;
-                      const hasFinalResult = isFinished && match.home_score_final !== null && (
-                        match.penalty_winner !== null ||
-                        match.home_score_final !== match.home_score ||
-                        match.away_score_final !== match.away_score
-                      );
+      {/* Encabezado de la fase activa */}
+      <div className="flex items-center gap-2">
+        <h2 className="text-xs uppercase tracking-widest text-indigo-400 font-semibold">
+          {phase.display_name}
+        </h2>
+        {phaseLocked ? (
+          <span className="text-xs text-red-500/60 flex items-center gap-1">
+            <Lock size={10} /> cerrada · no se pueden editar los pronósticos
+          </span>
+        ) : (
+          <span className="text-xs text-green-400/80 flex items-center gap-1">
+            <Unlock size={10} /> abierta · puedes editar tus pronósticos
+          </span>
+        )}
+      </div>
 
-                      return (
-                        <div
-                          key={match.id}
-                          className={cn(
-                            "px-4 py-3 transition-colors",
-                            isLive ? "bg-green-950/25" : isMatchToday && !isFinished ? "bg-yellow-950/10" : "",
-                            status === "saved" && "outline outline-1 outline-green-700/30"
+      {/* Partidos de la fase activa */}
+      <div className="space-y-4">
+        {Array.from(dayGroups.entries()).map(([dayKey, dayMatches]) => {
+          const isToday = dayKey === todayKey;
+          return (
+            <div key={dayKey}>
+              {/* Separador de día */}
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`h-px flex-1 ${isToday ? "bg-yellow-500/40" : "bg-gray-800"}`} />
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                  isToday
+                    ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/40"
+                    : "text-gray-500 border border-gray-800"
+                }`}>
+                  {isToday ? "⚽ HOY — " : ""}{formatDayHeader(dayKey)}
+                </span>
+                <div className={`h-px flex-1 ${isToday ? "bg-yellow-500/40" : "bg-gray-800"}`} />
+              </div>
+
+              <div className={`bg-gray-900 border rounded-xl divide-y overflow-hidden ${
+                isToday
+                  ? "border-yellow-500/30 divide-yellow-900/20"
+                  : "border-gray-800 divide-gray-800/60"
+              }`}>
+                {dayMatches.map((match) => {
+                  const locked = phaseLocked;
+                  const pred = predictions[match.id] ?? { home_score: null, away_score: null, points_earned: null };
+                  const status = saveStatus[match.id] ?? "idle";
+                  const hasResult = match.home_score !== null && match.away_score !== null;
+                  const isLive = match.status === "live";
+                  const isFinished = match.status === "finished";
+                  const isMatchToday = toMxDateKey(match.kickoff_at) === todayKey;
+                  const pts = pred.points_earned;
+                  const hasFinalResult = isFinished && match.home_score_final !== null && (
+                    match.penalty_winner !== null ||
+                    match.home_score_final !== match.home_score ||
+                    match.away_score_final !== match.away_score
+                  );
+
+                  return (
+                    <div
+                      key={match.id}
+                      className={cn(
+                        "px-4 py-3 transition-colors",
+                        isLive ? "bg-green-950/25" : isMatchToday && !isFinished ? "bg-yellow-950/10" : "",
+                        status === "saved" && "outline outline-1 outline-green-700/30"
+                      )}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-2.5">
+                        <span className="text-xs text-gray-500">{formatDateTime(match.kickoff_at)}</span>
+                        <div className="flex items-center gap-1.5">
+                          {isMatchToday && !isLive && !isFinished && (
+                            <span className="text-xs font-medium text-yellow-400 bg-yellow-500/10 border border-yellow-500/30 px-1.5 py-0.5 rounded-full">
+                              HOY
+                            </span>
                           )}
-                        >
-                          {/* Header */}
-                          <div className="flex items-center justify-between mb-2.5">
-                            <span className="text-xs text-gray-500">{formatDateTime(match.kickoff_at)}</span>
+                          {isLive && (
+                            <span className="flex items-center gap-1 text-xs text-green-400 font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                              En vivo{match.current_minute ? ` · ${match.current_minute}'` : ""}
+                            </span>
+                          )}
+                          {locked && !isLive && <Lock size={11} className="text-gray-700" />}
+                          {status === "saving" && <Clock size={11} className="text-indigo-400 animate-spin" />}
+                          {status === "saved" && <Check size={11} className="text-green-400" />}
+                          {status === "error" && <span className="text-xs text-red-400">Error</span>}
+                        </div>
+                      </div>
+
+                      {/* Equipos + pronóstico */}
+                      <div className="flex items-center gap-2">
+                        {/* Local */}
+                        <div className="flex-1 flex items-center justify-end gap-1.5 min-w-0">
+                          <span className="font-medium text-white text-sm text-right leading-tight truncate">
+                            {match.home_team}
+                          </span>
+                          <FlagIcon team={match.home_team} className="w-6 h-4 rounded-sm shrink-0" />
+                        </div>
+
+                        {/* Input o score bloqueado */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {!locked ? (
+                            <>
+                              <input
+                                type="number" min="0" max="99"
+                                value={pred.home_score ?? ""}
+                                onChange={(e) => handleScore(match.id, "home", e.target.value)}
+                                className="w-12 h-10 text-center text-lg font-bold rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                placeholder="—"
+                              />
+                              <span className="text-gray-500 font-bold text-lg">:</span>
+                              <input
+                                type="number" min="0" max="99"
+                                value={pred.away_score ?? ""}
+                                onChange={(e) => handleScore(match.id, "away", e.target.value)}
+                                className="w-12 h-10 text-center text-lg font-bold rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                placeholder="—"
+                              />
+                            </>
+                          ) : (
                             <div className="flex items-center gap-1.5">
-                              {isMatchToday && !isLive && !isFinished && (
-                                <span className="text-xs font-medium text-yellow-400 bg-yellow-500/10 border border-yellow-500/30 px-1.5 py-0.5 rounded-full">
-                                  HOY
-                                </span>
-                              )}
-                              {isLive && (
-                                <span className="flex items-center gap-1 text-xs text-green-400 font-medium">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                                  En vivo{match.current_minute ? ` · ${match.current_minute}'` : ""}
-                                </span>
-                              )}
-                              {locked && !isLive && <Lock size={11} className="text-gray-700" />}
-                              {status === "saving" && <Clock size={11} className="text-indigo-400 animate-spin" />}
-                              {status === "saved" && <Check size={11} className="text-green-400" />}
-                              {status === "error" && <span className="text-xs text-red-400">Error</span>}
-                            </div>
-                          </div>
-
-                          {/* Equipos + pronóstico */}
-                          <div className="flex items-center gap-2">
-                            {/* Local */}
-                            <div className="flex-1 flex items-center justify-end gap-1.5 min-w-0">
-                              <span className="font-medium text-white text-sm text-right leading-tight truncate">
-                                {match.home_team}
-                              </span>
-                              <FlagIcon team={match.home_team} className="w-6 h-4 rounded-sm shrink-0" />
-                            </div>
-
-                            {/* Input o score bloqueado */}
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {!locked ? (
-                                <>
-                                  <input
-                                    type="number" min="0" max="99"
-                                    value={pred.home_score ?? ""}
-                                    onChange={(e) => handleScore(match.id, "home", e.target.value)}
-                                    className="w-12 h-10 text-center text-lg font-bold rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="—"
-                                  />
-                                  <span className="text-gray-500 font-bold text-lg">:</span>
-                                  <input
-                                    type="number" min="0" max="99"
-                                    value={pred.away_score ?? ""}
-                                    onChange={(e) => handleScore(match.id, "away", e.target.value)}
-                                    className="w-12 h-10 text-center text-lg font-bold rounded-lg border border-gray-600 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    placeholder="—"
-                                  />
-                                </>
-                              ) : (
-                                <div className="flex items-center gap-1.5">
-                                  <span className={cn(
-                                    "w-12 h-10 flex items-center justify-center text-lg font-bold rounded-lg border",
-                                    pred.home_score !== null ? "border-gray-700 text-gray-300" : "border-gray-800 text-gray-600"
-                                  )}>
-                                    {pred.home_score ?? "—"}
-                                  </span>
-                                  <span className="text-gray-600 font-bold text-lg">:</span>
-                                  <span className={cn(
-                                    "w-12 h-10 flex items-center justify-center text-lg font-bold rounded-lg border",
-                                    pred.away_score !== null ? "border-gray-700 text-gray-300" : "border-gray-800 text-gray-600"
-                                  )}>
-                                    {pred.away_score ?? "—"}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Visitante */}
-                            <div className="flex-1 flex items-center gap-1.5 min-w-0">
-                              <FlagIcon team={match.away_team} className="w-6 h-4 rounded-sm shrink-0" />
-                              <span className="font-medium text-white text-sm leading-tight truncate">
-                                {match.away_team}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Resultado oficial */}
-                          {(hasResult || isLive) && (
-                            <div className="mt-2.5 flex items-center justify-center gap-2 flex-wrap">
-                              {/* Puntos ganados */}
-                              {isFinished && pts !== null && pts !== undefined && (
-                                <span className={cn(
-                                  "text-xs font-bold px-2 py-0.5 rounded-full border",
-                                  pts === 2 ? "bg-green-900/40 text-green-400 border-green-800/40" :
-                                  pts === 1 ? "bg-blue-900/40 text-blue-400 border-blue-800/40" :
-                                  "bg-gray-800/60 text-gray-500 border-gray-700/40"
-                                )}>
-                                  {pts === 2 ? "✓✓ +2 pts" : pts === 1 ? "✓ +1 pt" : "✗ 0 pts"}
-                                </span>
-                              )}
-
-                              {/* Marcador 90 min */}
-                              <div className={cn(
-                                "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border",
-                                isLive
-                                  ? "bg-green-900/30 border-green-800/40"
-                                  : "bg-gray-800/60 border-gray-700/40"
+                              <span className={cn(
+                                "w-12 h-10 flex items-center justify-center text-lg font-bold rounded-lg border",
+                                pred.home_score !== null ? "border-gray-700 text-gray-300" : "border-gray-800 text-gray-600"
                               )}>
-                                <span className="text-xs text-gray-500 font-medium">
-                                  {isLive
-                                    ? (match.current_minute ? `${match.current_minute}'` : "⚡")
-                                    : "90'"}
-                                </span>
-                                <span className={cn(
-                                  "text-sm font-bold tabular-nums",
-                                  isLive ? "text-green-300" :
-                                  pts === 2 ? "text-green-400" :
-                                  pts === 1 ? "text-blue-400" :
-                                  "text-white"
-                                )}>
-                                  {match.home_score} – {match.away_score}
-                                </span>
-                              </div>
+                                {pred.home_score ?? "—"}
+                              </span>
+                              <span className="text-gray-600 font-bold text-lg">:</span>
+                              <span className={cn(
+                                "w-12 h-10 flex items-center justify-center text-lg font-bold rounded-lg border",
+                                pred.away_score !== null ? "border-gray-700 text-gray-300" : "border-gray-800 text-gray-600"
+                              )}>
+                                {pred.away_score ?? "—"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
 
-                              {/* Resultado final (ET/penales) — solo si aplica */}
-                              {hasFinalResult && (
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-700/40 bg-gray-800/40">
-                                  <span className="text-xs text-gray-600 font-medium">Final</span>
-                                  <span className="text-sm font-bold tabular-nums text-gray-400">
-                                    {match.home_score_final} – {match.away_score_final}
-                                  </span>
-                                  {match.penalty_winner && (
-                                    <span className="text-xs text-gray-600">Penales</span>
-                                  )}
-                                </div>
+                        {/* Visitante */}
+                        <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                          <FlagIcon team={match.away_team} className="w-6 h-4 rounded-sm shrink-0" />
+                          <span className="font-medium text-white text-sm leading-tight truncate">
+                            {match.away_team}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Resultado oficial */}
+                      {(hasResult || isLive) && (
+                        <div className="mt-2.5 flex items-center justify-center gap-2 flex-wrap">
+                          {/* Puntos ganados */}
+                          {isFinished && pts !== null && pts !== undefined && (
+                            <span className={cn(
+                              "text-xs font-bold px-2 py-0.5 rounded-full border",
+                              pts === 2 ? "bg-green-900/40 text-green-400 border-green-800/40" :
+                              pts === 1 ? "bg-blue-900/40 text-blue-400 border-blue-800/40" :
+                              "bg-gray-800/60 text-gray-500 border-gray-700/40"
+                            )}>
+                              {pts === 2 ? "✓✓ +2 pts" : pts === 1 ? "✓ +1 pt" : "✗ 0 pts"}
+                            </span>
+                          )}
+
+                          {/* Marcador 90 min */}
+                          <div className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border",
+                            isLive
+                              ? "bg-green-900/30 border-green-800/40"
+                              : "bg-gray-800/60 border-gray-700/40"
+                          )}>
+                            <span className="text-xs text-gray-500 font-medium">
+                              {isLive
+                                ? (match.current_minute ? `${match.current_minute}'` : "⚡")
+                                : "90'"}
+                            </span>
+                            <span className={cn(
+                              "text-sm font-bold tabular-nums",
+                              isLive ? "text-green-300" :
+                              pts === 2 ? "text-green-400" :
+                              pts === 1 ? "text-blue-400" :
+                              "text-white"
+                            )}>
+                              {match.home_score} – {match.away_score}
+                            </span>
+                          </div>
+
+                          {/* Resultado final (ET/penales) */}
+                          {hasFinalResult && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-700/40 bg-gray-800/40">
+                              <span className="text-xs text-gray-600 font-medium">Final</span>
+                              <span className="text-sm font-bold tabular-nums text-gray-400">
+                                {match.home_score_final} – {match.away_score_final}
+                              </span>
+                              {match.penalty_winner && (
+                                <span className="text-xs text-gray-600">Penales</span>
                               )}
                             </div>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
