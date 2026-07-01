@@ -1,11 +1,13 @@
 "use client";
 import { createClient } from "@/lib/supabase/client";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function CambiarPassword() {
   const [actual, setActual] = useState("");
   const [nueva, setNueva] = useState("");
   const [confirmar, setConfirmar] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -64,22 +66,46 @@ export default function CambiarPassword() {
     );
   }
 
+  const inputType = showPass ? "text" : "password";
+  const inputClass = "w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 pr-11 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500";
+
+  const ToggleBtn = () => (
+    <button
+      type="button"
+      onClick={() => setShowPass((v) => !v)}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+      tabIndex={-1}
+      aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+    >
+      {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
+    </button>
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
         <label className="block text-xs text-gray-400 mb-1.5">Contraseña actual</label>
-        <input type="password" value={actual} onChange={e => setActual(e.target.value)} required
-          className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <div className="relative">
+          <input type={inputType} value={actual} onChange={e => setActual(e.target.value)} required
+            className={inputClass} />
+          <ToggleBtn />
+        </div>
       </div>
       <div>
         <label className="block text-xs text-gray-400 mb-1.5">Nueva contraseña</label>
-        <input type="password" value={nueva} onChange={e => setNueva(e.target.value)} required minLength={6}
-          className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <div className="relative">
+          <input type={inputType} value={nueva} onChange={e => setNueva(e.target.value)} required minLength={6}
+            className={inputClass} />
+          <ToggleBtn />
+        </div>
       </div>
       <div>
         <label className="block text-xs text-gray-400 mb-1.5">Confirmar nueva contraseña</label>
-        <input type="password" value={confirmar} onChange={e => setConfirmar(e.target.value)} required
-          className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <div className="relative">
+          <input type={inputType} value={confirmar} onChange={e => setConfirmar(e.target.value)} required
+            className={inputClass} />
+          <ToggleBtn />
+        </div>
       </div>
       {error && (
         <p className="text-red-400 text-xs bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-2">{error}</p>
