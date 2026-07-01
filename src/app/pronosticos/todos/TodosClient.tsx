@@ -60,202 +60,226 @@ export default function TodosClient({
   }));
 
   const allMatches = phaseGroups.flatMap((g) => g.matches);
-
-  // Ancho de la columna nombre (fija a la izquierda)
   const NAME_W = 140;
 
   return (
-    <div
-      /**
-       * overflow-x-auto  → scroll horizontal de la tabla
-       * overflow-y-clip  → recorta en Y SIN crear scroll container,
-       *                    lo que permite que position:sticky;top: funcione
-       *                    relativo a la ventana (no al div) — fix para desktop y mobile.
-       */
-      className="overflow-x-auto overflow-y-clip -mx-4 px-4"
-    >
-      {/* Contador de participantes visible — detecta si falta alguien */}
-      <p className="text-[11px] text-gray-600 mb-2 pl-1">
+    <div>
+      {/* ═══════════════════════════════════════════
+          INFO DE FASES — fuera del scroll, siempre visible
+      ═══════════════════════════════════════════ */}
+      <div className="flex items-center gap-1.5 flex-wrap mb-1.5 px-4">
+        <span className="text-[10px] text-gray-700 font-medium">Fases:</span>
+        {phaseGroups.map((g) =>
+          g.matches.length > 0 ? (
+            <span
+              key={g.phase.id}
+              className={cn(
+                "text-[9px] px-1.5 py-0.5 rounded-full border font-medium whitespace-nowrap",
+                g.isLocked
+                  ? "text-red-400 border-red-900/40 bg-red-950/20"
+                  : "text-green-400 border-green-900/40 bg-green-950/20"
+              )}
+            >
+              {g.phase.display_name} {g.isLocked ? "🔒" : "✏️"}
+            </span>
+          ) : null
+        )}
+      </div>
+
+      {/* Contador — fuera del scroll */}
+      <p className="text-[11px] text-gray-600 mb-1 px-4">
         {sorted.length} participante{sorted.length !== 1 ? "s" : ""}
       </p>
 
-      <table
-        className="border-collapse text-xs"
-        style={{ minWidth: `${NAME_W + 56 + allMatches.length * 72}px` }}
+      {/*
+        ═══════════════════════════════════════════
+        CONTENEDOR DE LA TABLA
+
+        EN MÓVIL (< md):
+          overflow-x-auto + overflow-y-auto + max-height → contenedor con scroll INTERNO en ambos ejes.
+          position:sticky top-0 en los headers referencia ESTE contenedor (no la ventana),
+          por lo que el header siempre pega en la parte superior del contenedor —
+          y la fila #1 (Jakub) aparece JUSTO DEBAJO sin ocultarse al scrollear.
+
+        EN DESKTOP (md+):
+          overflow-y-clip elimina el contenedor de scroll vertical → la página scrollea normalmente.
+          max-h-none quita el límite de altura.
+          position:sticky top-0 referencia la ventana (nav está a la izquierda, top=0 correcto).
+        ═══════════════════════════════════════════
+      */}
+      <div
+        className={cn(
+          "overflow-x-auto -mx-4 px-4",
+          // Móvil: scroll interno con altura máxima (svh = viewport más pequeño, con barra del navegador)
+          "overflow-y-auto max-h-[calc(100svh_-_160px)]",
+          // Desktop: sin contenedor de scroll Y (la página scrollea), sin límite de altura
+          "md:overflow-y-clip md:max-h-none",
+        )}
       >
+        <table
+          className="border-collapse text-xs"
+          style={{ minWidth: `${NAME_W + 48 + allMatches.length * 60}px` }}
+        >
+          {/* ═══════════════════════════════════════════
+              CABECERA COMPACTA
+              top-0 → referencia el contenedor de scroll (móvil)
+                     o la ventana (desktop con overflow-y-clip)
+              Removido el nombre de fase del header → altura ~36px en lugar de ~80px
+          ═══════════════════════════════════════════ */}
+          <thead>
+            <tr>
+              {/* Esquina: sticky izquierda + arriba */}
+              <th
+                className="sticky left-0 top-0 z-40 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-3 text-left text-gray-400 font-medium whitespace-nowrap"
+                style={{ minWidth: `${NAME_W}px` }}
+              >
+                Participante
+              </th>
 
-        {/* ═══════════════════════════════════════════
-            CABECERA
-            sticky top-12  → móvil: queda bajo nav superior (48 px)
-            sticky md:top-0 → desktop: nav está a la izquierda, top=0
-        ═══════════════════════════════════════════ */}
-        <thead>
-          <tr>
+              {/* Campeón: sticky arriba, NO izquierda */}
+              <th className="sticky top-0 z-20 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-2 text-center text-gray-400 font-medium w-[48px]">
+                🏆
+              </th>
 
-            {/* Esquina: sticky izquierda + arriba */}
-            <th
-              className="sticky left-0 top-12 md:top-0 z-40 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-3 text-left text-gray-400 font-medium"
-              style={{ minWidth: `${NAME_W}px` }}
-            >
-              Participante
-            </th>
+              {/* Columnas de partidos — COMPACTAS (una línea) */}
+              {allMatches.map((m) => {
+                const hasResult = m.home_score !== null;
+                const isFirstOfPhase = phaseGroups.some((g) => g.matches[0]?.id === m.id);
+                return (
+                  <th
+                    key={m.id}
+                    className={cn(
+                      "sticky top-0 z-20 bg-gray-900",
+                      "border-b-2 border-r border-gray-800 py-1.5 px-0.5 text-center min-w-[56px]",
+                      isFirstOfPhase ? "border-l-2 border-l-indigo-700" : ""
+                    )}
+                  >
+                    {/* HOME·AWAY en una sola línea — reduce altura del header a ~36px */}
+                    <div className="text-[9px] font-bold text-gray-300 tabular-nums leading-tight whitespace-nowrap">
+                      <span>{abbrev(m.home_team)}</span>
+                      <span className="text-gray-700 mx-[2px]">·</span>
+                      <span>{abbrev(m.away_team)}</span>
+                    </div>
+                    {/* Marcador si existe */}
+                    {hasResult && (
+                      <div className="text-green-500 font-bold text-[9px] mt-0.5 leading-none tabular-nums">
+                        {m.home_score}–{m.away_score}
+                      </div>
+                    )}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
 
-            {/* Campeón: sticky arriba, NO izquierda (scrollea con la tabla) */}
-            <th className="sticky top-12 md:top-0 z-20 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-2 text-center text-gray-400 font-medium w-[56px]">
-              🏆
-            </th>
+          {/* ═══════════════════════════════════════════
+              FILAS DE PARTICIPANTES
+          ═══════════════════════════════════════════ */}
+          <tbody>
+            {sorted.map((p, rowIdx) => {
+              const total = totals[p.id] ?? 0;
+              const bg = ROW_BG_SOLID[rowIdx % 2];
 
-            {/* Columnas de partidos: sticky arriba */}
-            {allMatches.map((m) => {
-              const hasResult = m.home_score !== null;
-              const phaseGroup = phaseGroups.find((g) => g.matches[0]?.id === m.id);
               return (
-                <th
-                  key={m.id}
-                  className={cn(
-                    "sticky top-12 md:top-0 z-20 bg-gray-900",
-                    "border-b-2 border-r border-gray-800 py-1.5 px-1 text-center min-w-[68px]",
-                    phaseGroup ? "border-l-2 border-l-indigo-800" : ""
-                  )}
+                <tr
+                  key={p.id}
+                  className={rowIdx % 2 === 0 ? "bg-[#030712]" : "bg-[#0f1623]"}
                 >
-                  {phaseGroup && (
-                    <div className="mb-1 leading-none">
-                      <span className="text-indigo-400 font-semibold uppercase tracking-widest text-[9px]">
-                        {phaseGroup.phase.display_name}
+                  {/* Nombre + # fila + puntos — sticky izquierda */}
+                  <td
+                    className="sticky left-0 z-10 border-r border-gray-800 py-2 px-3 font-semibold text-white"
+                    style={{ background: bg }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-700 font-mono text-[10px] w-4 shrink-0 text-right">
+                        {rowIdx + 1}
                       </span>
+                      <span className="flex-1 truncate">{p.name}</span>
                       <span className={cn(
-                        "ml-1 text-[8px] font-medium px-1 py-0.5 rounded",
-                        phaseGroup.isLocked
-                          ? "text-red-400 bg-red-950/40"
-                          : "text-green-400 bg-green-950/40"
+                        "font-bold text-xs tabular-nums shrink-0",
+                        total > 0 ? "text-indigo-300" : "text-gray-600"
                       )}>
-                        {phaseGroup.isLocked ? "Cerrada" : "Abierta"}
+                        {total}
                       </span>
                     </div>
-                  )}
-                  <div className="text-gray-300 font-semibold leading-tight">{abbrev(m.home_team)}</div>
-                  <div className="text-gray-600 text-[10px] leading-none my-0.5">vs</div>
-                  <div className="text-gray-300 font-semibold leading-tight">{abbrev(m.away_team)}</div>
-                  {hasResult && (
-                    <div className="text-green-500 font-bold mt-1 leading-none tabular-nums">
-                      {m.home_score}–{m.away_score}
-                    </div>
-                  )}
-                </th>
+                  </td>
+
+                  {/* Campeón — NO sticky, scrollea horizontalmente */}
+                  <td className="border-r border-gray-800 py-2 px-1 text-center">
+                    {p.champion_pick
+                      ? <FlagIcon team={p.champion_pick} className="w-6 h-4 rounded-sm mx-auto" />
+                      : <span className="text-gray-800 text-xs">—</span>}
+                  </td>
+
+                  {/* Celdas de partidos */}
+                  {allMatches.map((m) => {
+                    const phaseIsLocked = lockedSet.has(m.phase_id);
+                    const pred = phaseIsLocked ? idx[p.id]?.[m.id] : undefined;
+                    const hasPred = pred && pred.home_score !== null && pred.away_score !== null;
+                    const pts = pred?.points_earned;
+                    const hasResult = m.home_score !== null;
+
+                    return (
+                      <td
+                        key={m.id}
+                        className={cn(
+                          "border-r border-gray-800/60 py-2 px-1 text-center tabular-nums",
+                          hasResult && pts === 2 && "bg-green-950/40",
+                          hasResult && pts === 1 && "bg-blue-950/30",
+                        )}
+                      >
+                        {!phaseIsLocked ? (
+                          <span className="text-gray-800 text-[10px]">🔒</span>
+                        ) : hasPred ? (
+                          <div>
+                            <div className={cn(
+                              "font-bold text-xs leading-tight",
+                              pts === 2 ? "text-green-400" :
+                              pts === 1 ? "text-blue-400" :
+                              pts === 0 && hasResult ? "text-gray-600" :
+                              "text-gray-300"
+                            )}>
+                              {pred.home_score}–{pred.away_score}
+                            </div>
+                            {hasResult && pts !== null && (
+                              <div className={cn(
+                                "text-[10px] font-semibold leading-none mt-0.5",
+                                pts === 2 ? "text-green-500" :
+                                pts === 1 ? "text-blue-500" :
+                                "text-gray-700"
+                              )}>
+                                {pts === 2 ? "+2" : pts === 1 ? "+1" : "✗"}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-800">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
               );
             })}
-          </tr>
-        </thead>
+          </tbody>
 
-        {/* ═══════════════════════════════════════════
-            FILAS DE PARTICIPANTES
-        ═══════════════════════════════════════════ */}
-        <tbody>
-          {sorted.map((p, rowIdx) => {
-            const total = totals[p.id] ?? 0;
-            const bg = ROW_BG_SOLID[rowIdx % 2];
-
-            return (
-              <tr
-                key={p.id}
-                className={rowIdx % 2 === 0 ? "bg-[#030712]" : "bg-[#0f1623]"}
+          {/* ═══════════════════════════════════════════
+              PIE
+          ═══════════════════════════════════════════ */}
+          <tfoot>
+            <tr>
+              <td
+                className="sticky left-0 bg-gray-900 border-t border-gray-800 py-1.5 px-3 text-[10px] text-gray-600"
+                style={{ minWidth: `${NAME_W}px` }}
+                colSpan={1}
               >
-                {/* Nombre + # de fila + total — sticky izquierda */}
-                <td
-                  className="sticky left-0 z-10 border-r border-gray-800 py-2 px-3 font-semibold text-white"
-                  style={{ background: bg }}
-                >
-                  <div className="flex items-center gap-1.5">
-                    {/* Número de fila — permite detectar si falta alguien */}
-                    <span className="text-gray-700 font-mono text-[10px] w-4 shrink-0 text-right">
-                      {rowIdx + 1}
-                    </span>
-                    <span className="flex-1 truncate">{p.name}</span>
-                    <span className={cn(
-                      "font-bold text-xs tabular-nums shrink-0",
-                      total > 0 ? "text-indigo-300" : "text-gray-600"
-                    )}>
-                      {total}
-                    </span>
-                  </div>
-                </td>
-
-                {/* Campeón — NO sticky (scrollea horizontalmente) */}
-                <td className="border-r border-gray-800 py-2 px-1 text-center">
-                  {p.champion_pick
-                    ? <FlagIcon team={p.champion_pick} className="w-6 h-4 rounded-sm mx-auto" />
-                    : <span className="text-gray-800 text-xs">—</span>}
-                </td>
-
-                {/* Celdas de partidos */}
-                {allMatches.map((m) => {
-                  const phaseIsLocked = lockedSet.has(m.phase_id);
-                  const pred = phaseIsLocked ? idx[p.id]?.[m.id] : undefined;
-                  const hasPred = pred && pred.home_score !== null && pred.away_score !== null;
-                  const pts = pred?.points_earned;
-                  const hasResult = m.home_score !== null;
-
-                  return (
-                    <td
-                      key={m.id}
-                      className={cn(
-                        "border-r border-gray-800/60 py-2 px-1 text-center tabular-nums",
-                        hasResult && pts === 2 && "bg-green-950/40",
-                        hasResult && pts === 1 && "bg-blue-950/30",
-                      )}
-                    >
-                      {!phaseIsLocked ? (
-                        <span className="text-gray-800 text-[10px]">🔒</span>
-                      ) : hasPred ? (
-                        <div>
-                          <div className={cn(
-                            "font-bold text-xs leading-tight",
-                            pts === 2 ? "text-green-400" :
-                            pts === 1 ? "text-blue-400" :
-                            pts === 0 && hasResult ? "text-gray-600" :
-                            "text-gray-300"
-                          )}>
-                            {pred.home_score}–{pred.away_score}
-                          </div>
-                          {hasResult && pts !== null && (
-                            <div className={cn(
-                              "text-[10px] font-semibold leading-none mt-0.5",
-                              pts === 2 ? "text-green-500" :
-                              pts === 1 ? "text-blue-500" :
-                              "text-gray-700"
-                            )}>
-                              {pts === 2 ? "+2" : pts === 1 ? "+1" : "✗"}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-800">—</span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-
-        {/* ═══════════════════════════════════════════
-            PIE: total de participantes visibles
-        ═══════════════════════════════════════════ */}
-        <tfoot>
-          <tr>
-            <td
-              className="sticky left-0 bg-gray-900/80 border-t border-gray-800 py-1.5 px-3 text-[10px] text-gray-600"
-              style={{ minWidth: `${NAME_W}px` }}
-              colSpan={1}
-            >
-              {sorted.length} de 18 participantes
-            </td>
-            <td colSpan={1 + allMatches.length} className="border-t border-gray-800" />
-          </tr>
-        </tfoot>
-
-      </table>
+                {sorted.length} de 18 participantes
+              </td>
+              <td colSpan={1 + allMatches.length} className="border-t border-gray-800" />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }
