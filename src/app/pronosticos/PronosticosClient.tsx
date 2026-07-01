@@ -85,7 +85,7 @@ export default function PronosticosClient({ matches, phases, participantId, init
             </h2>
             {phaseLocked ? (
               <span className="text-xs text-red-500/60 flex items-center gap-1">
-                <Lock size={10} /> cerrada
+                <Lock size={10} /> cerrada · no se pueden editar los pronósticos
               </span>
             ) : (
               <span className="text-xs text-green-400/80 flex items-center gap-1">
