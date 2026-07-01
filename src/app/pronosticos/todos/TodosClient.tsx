@@ -22,7 +22,6 @@ interface Props {
 }
 
 function abbrev(name: string) {
-  // Acorta nombres de equipos para las cabeceras
   const map: Record<string, string> = {
     "Sudáfrica": "RSA", "Canadá": "CAN", "Alemania": "GER", "Paraguay": "PAR",
     "Francia": "FRA", "Suecia": "SUE", "Países Bajos": "NED", "Marruecos": "MAR",
@@ -35,6 +34,9 @@ function abbrev(name: string) {
   };
   return map[name] ?? name.slice(0, 3).toUpperCase();
 }
+
+// Colores de fondo por fila (alternados) — deben ser sólidos para el sticky
+const ROW_BG = ["#030712", "rgb(17,24,39,0.6)"] as const;
 
 export default function TodosClient({ matches, phases, lockedPhaseIds, participants, predictions, totals }: Props) {
   const lockedSet = new Set(lockedPhaseIds);
@@ -59,31 +61,48 @@ export default function TodosClient({ matches, phases, lockedPhaseIds, participa
   // Todos los matches en orden (para las columnas)
   const allMatches = phaseGroups.flatMap((g) => g.matches);
 
+  // Ancho de la columna de nombre (fija)
+  const NAME_COL_W = 130;
+
   return (
     <div className="overflow-x-auto -mx-4 px-4">
-      <table className="border-collapse text-xs" style={{ minWidth: `${130 + 56 + allMatches.length * 72}px` }}>
+      <table
+        className="border-collapse text-xs"
+        style={{ minWidth: `${NAME_COL_W + 56 + allMatches.length * 72}px` }}
+      >
 
-        {/* ── Cabecera única (sticky vertical en desktop) ── */}
+        {/* ══════════════════════════════════════════════════
+            CABECERA — sticky vertical en todas las pantallas
+            top-12 en móvil (nav superior 48px),
+            top-0 en desktop (nav a la izquierda)
+        ══════════════════════════════════════════════════ */}
         <thead>
           <tr>
-            {/* Col 1: Nombre — sticky izquierda */}
-            <th className="sticky left-0 z-30 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-3 text-left text-gray-400 font-medium min-w-[130px] md:top-0">
+
+            {/* Col 1: Nombre — sticky izquierda Y arriba (esquina) */}
+            <th
+              className="sticky left-0 top-12 md:top-0 z-40 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-3 text-left text-gray-400 font-medium"
+              style={{ minWidth: `${NAME_COL_W}px` }}
+            >
               Participante
             </th>
-            {/* Col 2: Campeón — sticky izquierda (segunda columna) */}
-            <th className="sticky left-[130px] z-20 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-2 text-center text-gray-400 font-medium w-[56px]">
+
+            {/* Col 2: Campeón — sticky arriba PERO no izquierda (scrollea horizontalmente) */}
+            <th
+              className="sticky top-12 md:top-0 z-20 bg-gray-900 border-b-2 border-r border-gray-700 py-2 px-2 text-center text-gray-400 font-medium w-[56px]"
+            >
               🏆
             </th>
 
-            {allMatches.map((m, i) => {
+            {/* Columnas de partidos */}
+            {allMatches.map((m) => {
               const hasResult = m.home_score !== null;
-              // Primera columna de cada fase → mostrar nombre de fase encima
               const phaseGroup = phaseGroups.find((g) => g.matches[0]?.id === m.id);
               return (
                 <th
                   key={m.id}
                   className={cn(
-                    "md:sticky md:top-0 z-10 border-b-2 border-r border-gray-800 py-1.5 px-1 text-center bg-gray-900 min-w-[68px]",
+                    "sticky top-12 md:top-0 z-20 border-b-2 border-r border-gray-800 py-1.5 px-1 text-center bg-gray-900 min-w-[68px]",
                     phaseGroup ? "border-l-2 border-l-indigo-800" : ""
                   )}
                 >
@@ -120,18 +139,22 @@ export default function TodosClient({ matches, phases, lockedPhaseIds, participa
           </tr>
         </thead>
 
-        {/* ── Filas de participantes ── */}
+        {/* ══════════════════════════════════════════════════
+            FILAS DE PARTICIPANTES
+        ══════════════════════════════════════════════════ */}
         <tbody>
           {sorted.map((p, rowIdx) => {
             const total = totals[p.id] ?? 0;
+            const rowBg = ROW_BG[rowIdx % 2];
             return (
               <tr
                 key={p.id}
                 className={rowIdx % 2 === 0 ? "bg-gray-950" : "bg-gray-900/60"}
               >
-                {/* Col 1: Nombre + total — sticky */}
-                <td className="sticky left-0 z-20 border-r border-gray-800 py-2 px-3 font-semibold text-white"
-                  style={{ background: rowIdx % 2 === 0 ? "#030712" : "rgba(17,24,39,0.6)" }}
+                {/* Col 1: Nombre + total — sticky izquierda (fondo sólido para no verse transparente) */}
+                <td
+                  className="sticky left-0 z-10 border-r border-gray-800 py-2 px-3 font-semibold text-white"
+                  style={{ background: rowBg }}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span>{p.name}</span>
@@ -144,10 +167,8 @@ export default function TodosClient({ matches, phases, lockedPhaseIds, participa
                   </div>
                 </td>
 
-                {/* Col 2: Campeón con bandera — sticky */}
-                <td className="sticky left-[130px] z-10 border-r border-gray-800 py-2 px-1 text-center"
-                  style={{ background: rowIdx % 2 === 0 ? "#030712" : "rgba(17,24,39,0.6)" }}
-                >
+                {/* Col 2: Campeón con bandera — NO sticky, scrollea con la tabla */}
+                <td className="border-r border-gray-800 py-2 px-1 text-center">
                   {p.champion_pick ? (
                     <FlagIcon team={p.champion_pick} className="w-6 h-4 rounded-sm mx-auto" />
                   ) : (
