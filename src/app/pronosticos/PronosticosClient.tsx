@@ -315,17 +315,34 @@ export default function PronosticosClient({ matches, phases, participantId, init
                           </div>
 
                           {/* Resultado final (ET/penales) */}
-                          {hasFinalResult && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-700/40 bg-gray-800/40">
-                              <span className="text-xs text-gray-600 font-medium">Final</span>
-                              <span className="text-sm font-bold tabular-nums text-gray-400">
-                                {match.home_score_final} – {match.away_score_final}
-                              </span>
-                              {match.penalty_winner && (
-                                <span className="text-xs text-gray-600">Penales</span>
-                              )}
-                            </div>
-                          )}
+                          {hasFinalResult && (() => {
+                            const isPen = !!match.penalty_winner;
+                            // Si fue solo penales (marcador final = 90'), mostrar solo el ganador
+                            const sameScore =
+                              match.home_score_final === match.home_score &&
+                              match.away_score_final === match.away_score;
+                            const winner =
+                              match.penalty_winner === "home"
+                                ? match.home_team
+                                : match.away_team;
+                            return (
+                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-700/40 bg-gray-800/40">
+                                {!sameScore && (
+                                  <>
+                                    <span className="text-xs text-gray-600 font-medium">T.E.</span>
+                                    <span className="text-sm font-bold tabular-nums text-gray-400">
+                                      {match.home_score_final} – {match.away_score_final}
+                                    </span>
+                                  </>
+                                )}
+                                {isPen && (
+                                  <span className="text-xs text-gray-500">
+                                    {!sameScore ? "·" : ""} 🎯 pen. <span className="text-gray-400 font-medium">{winner}</span>
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>

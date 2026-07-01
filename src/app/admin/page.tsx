@@ -2,12 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Navigation from "@/components/Navigation";
 import ParticipantsManager from "./ParticipantsManager";
-import ResultsManager from "./ResultsManager";
 import AdminPronosticosManager from "./AdminPronosticosManager";
 import AuditLog from "./AuditLog";
 import RecalcularButton from "./RecalcularButton";
 import PronosticosStatus from "./PronosticosStatus";
-import MatchManager from "./MatchManager";
+import UnifiedMatchEditor from "./UnifiedMatchEditor";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { Participant, Match, Phase, BolsaInfo } from "@/types/database";
@@ -166,26 +165,14 @@ export default async function AdminPage({
 
         {/* ── TAB: PARTIDOS ── */}
         {activeTab === "partidos" && (
-          <div className="space-y-6">
-            <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-800">
-                <h2 className="font-semibold text-white">📋 Capturar Resultados</h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Registra el marcador a 90 min y el resultado final si hubo tiempo extra o penales
-                </p>
-              </div>
-              <ResultsManager matches={matches} adminId={me.id} />
+          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-800">
+              <h2 className="font-semibold text-white">📅 Partidos</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Edita equipos, horarios y resultados — todo en un solo lugar
+              </p>
             </div>
-
-            <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-800">
-                <h2 className="font-semibold text-white">📅 Editar Partidos</h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Corrige horarios o equipos, y agrega partidos de fases eliminatorias
-                </p>
-              </div>
-              <MatchManager matches={matches} phases={phases} adminId={me.id} />
-            </div>
+            <UnifiedMatchEditor matches={matches} phases={phases} adminId={me.id} />
           </div>
         )}
 
