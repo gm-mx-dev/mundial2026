@@ -80,8 +80,13 @@ interface Props {
   className?: string;
 }
 
+// Índice normalizado en MAYÚSCULAS para búsqueda case-insensitive
+const TEAM_FLAGS_UPPER: Record<string, FlagComp> = Object.fromEntries(
+  Object.entries(TEAM_FLAGS).map(([k, v]) => [k.toUpperCase(), v])
+);
+
 export default function FlagIcon({ team, className = "w-6 h-4 inline-block rounded-sm" }: Props) {
-  const Flag = TEAM_FLAGS[team];
+  const Flag = TEAM_FLAGS[team] ?? TEAM_FLAGS_UPPER[team.toUpperCase()];
   if (!Flag) return null;
   return <Flag className={className} aria-label={team} />;
 }
