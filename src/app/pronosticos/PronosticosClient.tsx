@@ -49,8 +49,19 @@ export default function PronosticosClient({ matches, phases, participantId, init
     })
     .filter((g) => g.hasMatches);
 
-  // Default: primera fase abierta; si todas cerradas, la última con partidos
+  // Default:
+  // 1. Fase "en curso": ya empezó (locked) pero aún tiene partidos scheduled/live
+  // 2. Primera fase abierta (upcoming)
+  // 3. Última fase con partidos (todo terminado)
   const defaultPhaseId = (() => {
+    for (const g of matchesByPhase) {
+      if (g.phaseLocked) {
+        const hasActive = matches
+          .filter((m) => m.phase_id === g.phase.id)
+          .some((m) => m.status === "scheduled" || m.status === "live");
+        if (hasActive) return g.phase.id;
+      }
+    }
     const open = matchesByPhase.find((g) => !g.phaseLocked);
     if (open) return open.phase.id;
     return matchesByPhase[matchesByPhase.length - 1]?.phase.id ?? null;
