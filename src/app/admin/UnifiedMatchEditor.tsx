@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import FlagIcon from "@/components/FlagIcon";
 import type { Match, Phase } from "@/types/database";
-import { Check, Loader2, Plus, Save, ChevronDown } from "lucide-react";
+import { Check, Loader2, Plus, Save, ChevronDown, Trash2, AlertTriangle } from "lucide-react";
 
 // ── Catálogo oficial de 32 equipos (nombres en español) ──────────────────────
 const TEAMS = [
@@ -183,6 +183,10 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
   const [saved, setSaved] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Estado para confirmación de eliminación
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null); // match.id en espera de confirmar
+  const [deleting, setDeleting] = useState<string | null>(null);
+
   const [addState, setAddState] = useState<AddMatchState>({
     phase_id: phases[0]?.id?.toString() ?? "",
     home_team: "",
@@ -293,6 +297,36 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
     }
 
     setSaving(null);
+  };
+
+  // ── Eliminar partido ──────────────────────────────────────────────────────
+  const deleteMatch = async (match: Match) => {
+    setDeleting(match.id);
+
+    // Eliminar pronósticos relacionados primero
+    await supabase.from("predictions").delete().eq("match_id", match.id);
+
+    // Eliminar el partido
+    const { error } = await supabase.from("matches").delete().eq("id", match.id);
+
+    if (!error) {
+      await supabase.from("audit_log").insert({
+        action_type: "match_deleted",
+        performed_by: adminId,
+        match_id: match.id,
+        before_value: {
+          home_team: match.home_team,
+          away_team: match.away_team,
+          kickoff_at: match.kickoff_at,
+          match_number: match.match_number,
+        },
+        after_value: null,
+      });
+      setDeleteConfirm(null);
+      router.refresh();
+    }
+
+    setDeleting(null);
   };
 
   // ── Agregar partido nuevo ─────────────────────────────────────────────────
@@ -542,27 +576,72 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
                       </p>
                     )}
 
-                    {/* Botón guardar */}
-                    <div className="flex justify-end">
-                      <button
-                        onClick={() => saveMatch(match)}
-                        disabled={isSaving || !hasValidTeams || !st.kickoff}
-                        className={cn(
-                          "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                          isSaved
-                            ? "bg-green-900/40 text-green-400 border border-green-800/40"
-                            : "bg-indigo-700 hover:bg-indigo-600 text-white disabled:opacity-40"
-                        )}
-                      >
-                        {isSaving ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : isSaved ? (
-                          <><Check size={14} /> Guardado</>
-                        ) : (
-                          <><Save size={14} /> Guardar</>
-                        )}
-                      </button>
-                    </div>
+                    {/* Acciones: Guardar + Eliminar */}
+                    {deleteConfirm === match.id ? (
+                      /* Panel de confirmación de eliminación */
+                      <div className="bg-red-950/30 border border-red-900/50 rounded-xl p-3 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle size={15} className="text-red-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-semibold text-red-300">¿Eliminar este partido?</p>
+                            <p className="text-xs text-red-400/80 mt-0.5">
+                              P{match.match_number}: {match.home_team} vs {match.away_team}
+                            </p>
+                            <p className="text-xs text-red-500/70 mt-1">
+                              Se eliminarán también todos los pronósticos capturados para este partido. Esta acción no se puede deshacer.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => setDeleteConfirm(null)}
+                            className="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-400 text-xs hover:border-gray-600 transition-colors"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={() => deleteMatch(match)}
+                            disabled={deleting === match.id}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-xs font-medium transition-colors disabled:opacity-50"
+                          >
+                            {deleting === match.id
+                              ? <Loader2 size={12} className="animate-spin" />
+                              : <Trash2 size={12} />}
+                            Sí, eliminar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        {/* Botón eliminar — secundario, a la izquierda */}
+                        <button
+                          onClick={() => setDeleteConfirm(match.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-700 text-gray-500 text-xs hover:border-red-800/60 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={12} /> Eliminar
+                        </button>
+
+                        {/* Botón guardar */}
+                        <button
+                          onClick={() => saveMatch(match)}
+                          disabled={isSaving || !hasValidTeams || !st.kickoff}
+                          className={cn(
+                            "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                            isSaved
+                              ? "bg-green-900/40 text-green-400 border border-green-800/40"
+                              : "bg-indigo-700 hover:bg-indigo-600 text-white disabled:opacity-40"
+                          )}
+                        >
+                          {isSaving ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : isSaved ? (
+                            <><Check size={14} /> Guardado</>
+                          ) : (
+                            <><Save size={14} /> Guardar</>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
