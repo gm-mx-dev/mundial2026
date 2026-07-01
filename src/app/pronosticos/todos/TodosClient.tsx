@@ -14,7 +14,7 @@ interface Prediction {
 interface Props {
   matches: Match[];
   phases: Phase[];
-  lockedPhaseIds: string[];
+  lockedPhaseIds: number[];
   participants: Pick<Participant, "id" | "name" | "is_active">[];
   predictions: Prediction[];
   totals: Record<string, number>; // participantId → total_points
