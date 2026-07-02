@@ -412,7 +412,7 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
   // ── Partidos de la fase activa ────────────────────────────────────────────
   const activeMatches = matches
     .filter((m) => m.phase_id === activePhaseId)
-    .sort((a, b) => a.match_number - b.match_number);
+    .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime());
 
   return (
     <div>
