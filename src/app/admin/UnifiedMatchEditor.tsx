@@ -666,7 +666,7 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
                       </div>
                       {st.status === "live" && (
                         <p className="text-[10px] text-green-600/70 mt-1.5">
-                          Marcador visible en tiempo real. Los puntos se calculan al marcar Finalizado.
+                          Marcador visible en tiempo real. Los puntos se actualizan al guardar.
                         </p>
                       )}
                     </div>

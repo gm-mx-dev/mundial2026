@@ -1,5 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Match, Phase, Participant } from "@/types/database";
 import FlagIcon from "@/components/FlagIcon";
@@ -42,6 +44,23 @@ export default function TodosClient({
   matches, phases, lockedPhaseIds, participants, predictions, totals,
 }: Props) {
   const lockedSet = new Set(lockedPhaseIds);
+  const router = useRouter();
+
+  // ── Realtime: refrescar cuando cambien puntos o resultados ───────────────
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("todos-live")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "predictions" }, () => {
+        router.refresh();
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches" }, () => {
+        router.refresh();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [router]);
 
   // Índice rápido: participantId → matchId → prediction
   const idx: Record<string, Record<string, Prediction>> = {};
