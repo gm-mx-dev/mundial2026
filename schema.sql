@@ -354,11 +354,131 @@ INSERT INTO participants (name, is_admin, needs_proxy, champion_pick, fee_paid) 
 -- o cuando el participante hace login con Google por primera vez (se vincula por email)
 
 -- ────────────────────────────────────────────────
+-- 12. ADICIONES POST-INICIAL
+-- (aplicadas durante el desarrollo, después del schema original)
+-- ────────────────────────────────────────────────
+
+-- Columnas para soporte de Tiempo Extra y Penales en matches
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS current_minute     INT;           -- Minuto actual (partidos en vivo)
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS home_score_final   INT;           -- Marcador acumulado después de T.E.
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS away_score_final   INT;           -- (solo display — no afecta quiniela)
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS penalty_winner     TEXT           -- 'home' | 'away' | NULL
+  CHECK (penalty_winner IN ('home', 'away'));
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS penalty_home_score INT;           -- Goles en tanda de penales
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS penalty_away_score INT;
+
+-- ────────────────────────────────────────────────
+-- 13. FUNCIÓN Y TRIGGER: RECALCULAR PUNTOS AUTOMÁTICAMENTE
+-- ────────────────────────────────────────────────
+-- Se dispara en cualquier UPDATE a home_score/away_score en matches.
+-- Calcula puntos para TODOS los pronósticos del partido (live o finished).
+-- Incluye bono de +5 si es la Final y el participante acertó al campeón.
+-- NOTA: home_score/away_score = marcador a 90 min (base de la quiniela).
+--       penalty_winner solo aplica para desempatar campeón en la Final.
+
+CREATE OR REPLACE FUNCTION recalculate_match_points()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_is_final      BOOLEAN := FALSE;
+  v_champion      TEXT;
+  v_champion_norm TEXT;
+BEGIN
+  -- Solo actuar si cambiaron los scores
+  IF (OLD.home_score IS DISTINCT FROM NEW.home_score) OR
+     (OLD.away_score IS DISTINCT FROM NEW.away_score) THEN
+
+    IF NEW.home_score IS NOT NULL AND NEW.away_score IS NOT NULL THEN
+
+      -- Verificar si es la Final
+      SELECT (ph.name = 'final' AND NEW.match_number = 1)
+      INTO v_is_final
+      FROM phases ph WHERE ph.id = NEW.phase_id;
+
+      -- Determinar campeón si es la Final
+      IF v_is_final THEN
+        IF NEW.home_score > NEW.away_score THEN
+          v_champion := NEW.home_team;
+        ELSIF NEW.away_score > NEW.home_score THEN
+          v_champion := NEW.away_team;
+        ELSIF NEW.penalty_winner = 'home' THEN
+          v_champion := NEW.home_team;
+        ELSIF NEW.penalty_winner = 'away' THEN
+          v_champion := NEW.away_team;
+        END IF;
+
+        IF v_champion IS NOT NULL THEN
+          v_champion_norm := UPPER(TRANSLATE(v_champion,
+            'áéíóúüñÁÉÍÓÚÜÑ',
+            'aeiouunAEIOUUN'));
+        END IF;
+      END IF;
+
+      -- Actualizar puntos con bonus campeón si aplica
+      UPDATE predictions p
+      SET points_earned = (
+        CASE
+          WHEN p.home_score = NEW.home_score AND p.away_score = NEW.away_score THEN 2
+          WHEN SIGN(p.home_score - p.away_score) = SIGN(NEW.home_score - NEW.away_score) THEN 1
+          ELSE 0
+        END
+        + CASE
+          WHEN v_is_final AND v_champion_norm IS NOT NULL THEN
+            CASE WHEN UPPER(TRANSLATE(COALESCE(pt.champion_pick, ''),
+              'áéíóúüñÁÉÍÓÚÜÑ',
+              'aeiouunAEIOUUN')) = v_champion_norm THEN 5
+            ELSE 0 END
+          ELSE 0
+        END
+      )
+      FROM participants pt
+      WHERE p.match_id = NEW.id
+        AND pt.id = p.participant_id;
+
+    ELSE
+      -- Scores borrados: resetear puntos
+      UPDATE predictions SET points_earned = NULL WHERE match_id = NEW.id;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- IMPORTANTE: usar CREATE OR REPLACE + DROP IF EXISTS para re-ejecuciones seguras
+DROP TRIGGER IF EXISTS trg_recalculate_points ON matches;
+CREATE TRIGGER trg_recalculate_points
+  AFTER UPDATE ON matches
+  FOR EACH ROW EXECUTE FUNCTION recalculate_match_points();
+
+-- ────────────────────────────────────────────────
+-- 14. CRON JOB (configurado en Supabase Dashboard)
+-- ────────────────────────────────────────────────
+-- NO ejecutar este bloque como SQL — es solo documentación.
+-- El cron se configura en: Supabase Dashboard → Database → Cron Jobs
+--
+--   Nombre:  sync-resultados-cada-5min
+--   Cédula:  */5 * * * *
+--   Comando:
+--     SELECT net.http_post(
+--       url     := 'https://<PROJECT_REF>.supabase.co/functions/v1/sync-resultados',
+--       headers := '{"Content-Type":"application/json","x-cron-secret":"quiniela2026"}'::jsonb,
+--       body    := '{}'::jsonb
+--     );
+--
+-- Reemplazar <PROJECT_REF> con el ID del proyecto Supabase.
+-- La Edge Function vive en: supabase/functions/sync-resultados/index.ts
+
+-- ────────────────────────────────────────────────
 -- FIN DEL SCHEMA
 -- ────────────────────────────────────────────────
--- Para ejecutar en Supabase:
+-- Para ejecutar en Supabase (desde cero en un proyecto nuevo):
 -- 1. Ve a tu proyecto en supabase.com
 -- 2. Click en "SQL Editor" en el menú izquierdo
 -- 3. Pega este archivo completo
 -- 4. Click en "Run"
+--
+-- Para aplicar SOLO las adiciones post-iniciales (secciones 12-13)
+-- en un proyecto que ya tiene el schema base:
+-- Ejecuta únicamente desde la sección 12 en adelante.
+-- Los ALTER TABLE tienen IF NOT EXISTS — son seguros de re-ejecutar.
 -- ────────────────────────────────────────────────
