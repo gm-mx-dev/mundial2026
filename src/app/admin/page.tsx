@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, tryAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Navigation from "@/components/Navigation";
 import ParticipantsManager from "./ParticipantsManager";
@@ -7,6 +7,7 @@ import AuditLog from "./AuditLog";
 import RecalcularButton from "./RecalcularButton";
 import PronosticosStatus from "./PronosticosStatus";
 import UnifiedMatchEditor from "./UnifiedMatchEditor";
+import RespaldoManager from "./RespaldoManager";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { Participant, Match, Phase, BolsaInfo } from "@/types/database";
@@ -19,6 +20,7 @@ const TABS = [
   { id: "pronosticos",   label: "✏️ Pronósticos" },
   { id: "recalcular",    label: "🔄 Recalcular" },
   { id: "bitacora",      label: "📜 Bitácora" },
+  { id: "respaldo",      label: "💾 Respaldo" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -96,6 +98,18 @@ export default async function AdminPage({
   }
 
   // recalcular y bitacora no necesitan datos adicionales
+
+  // Respaldo: listar archivos del bucket privado (necesita service role)
+  let backups: { name: string; metadata?: { size?: number }; created_at?: string; updated_at?: string }[] = [];
+  if (activeTab === "respaldo") {
+    const adminClient = tryAdminClient();
+    if (adminClient) {
+      const { data: files } = await adminClient.storage
+        .from("backups")
+        .list("", { sortBy: { column: "name", order: "desc" } });
+      backups = (files ?? []).filter(f => f.name.endsWith(".json"));
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -219,6 +233,19 @@ export default async function AdminPage({
               </p>
             </div>
             <AuditLog />
+          </div>
+        )}
+
+        {/* ── TAB: RESPALDO ── */}
+        {activeTab === "respaldo" && (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-800">
+              <h2 className="font-semibold text-white">💾 Respaldo de Base de Datos</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Genera o descarga un respaldo completo de todos los datos
+              </p>
+            </div>
+            <RespaldoManager backups={backups} />
           </div>
         )}
 
