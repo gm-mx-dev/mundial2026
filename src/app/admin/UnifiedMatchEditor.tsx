@@ -39,6 +39,19 @@ function mexicoInputToUtc(local: string): string {
   return new Date(fakeUtc.getTime() + offsetMs).toISOString();
 }
 
+// ── Formatea "YYYY-MM-DDTHH:MM" (hora México) como "02/07 1:00pm" ─────────────
+function formatKickoffShort(localDt: string): string {
+  if (!localDt) return "";
+  const [datePart, timePart] = localDt.split("T");
+  if (!datePart || !timePart) return "";
+  const [, month, day] = datePart.split("-");
+  const [hours, minutes] = timePart.split(":");
+  const h = parseInt(hours, 10);
+  const ampm = h >= 12 ? "pm" : "am";
+  const h12 = h % 12 || 12;
+  return `${day}/${month} ${h12}:${minutes}${ampm}`;
+}
+
 // ── Combobox con filtro por nombre de equipo ──────────────────────────────────
 interface ComboboxProps {
   value: string;
@@ -511,6 +524,11 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
               <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-gray-800/60 bg-gray-800/30">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-[11px] font-mono text-gray-600 shrink-0">P{match.match_number}</span>
+                  {st.kickoff && (
+                    <span className="text-[11px] text-gray-500 shrink-0">
+                      {formatKickoffShort(st.kickoff)}
+                    </span>
+                  )}
                   {hasValidTeams && (
                     <div className="flex items-center gap-1 text-xs text-gray-400 truncate">
                       <FlagIcon team={st.home_team} className="w-4 h-3 rounded-sm shrink-0" />
