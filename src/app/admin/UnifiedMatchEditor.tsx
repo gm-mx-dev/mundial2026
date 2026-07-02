@@ -248,6 +248,32 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
   const update = (matchId: string, patch: Partial<MatchEditState>) =>
     setEditState((prev) => ({ ...prev, [matchId]: { ...prev[matchId], ...patch } }));
 
+  // ── Sincronizar nuevos partidos al editState cuando cambia el prop ────────
+  // (router.refresh() pasa props nuevas pero useState no se reinicia)
+  useEffect(() => {
+    setEditState((prev) => {
+      const additions: Record<string, MatchEditState> = {};
+      for (const m of matches) {
+        if (!prev[m.id]) {
+          additions[m.id] = {
+            home_team: m.home_team,
+            away_team: m.away_team,
+            kickoff: utcToMexicoInput(m.kickoff_at),
+            home90: m.home_score?.toString() ?? "",
+            away90: m.away_score?.toString() ?? "",
+            homeFinal: m.home_score_final?.toString() ?? "",
+            awayFinal: m.away_score_final?.toString() ?? "",
+            penHome: m.penalty_home_score?.toString() ?? "",
+            penAway: m.penalty_away_score?.toString() ?? "",
+            status: (m.status ?? "scheduled") as "scheduled" | "live" | "finished",
+          };
+        }
+      }
+      if (Object.keys(additions).length === 0) return prev; // sin cambios
+      return { ...prev, ...additions };
+    });
+  }, [matches]);
+
   // ── Guardar partido ───────────────────────────────────────────────────────
   const saveMatch = async (match: Match) => {
     const st = editState[match.id];
