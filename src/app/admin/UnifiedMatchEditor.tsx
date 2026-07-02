@@ -52,13 +52,9 @@ function TeamCombobox({ value, onChange, placeholder = "Equipo", align = "left" 
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sincronizar cuando el padre actualiza el valor
   useEffect(() => { setQuery(value); }, [value]);
 
-  const filtered = TEAMS.filter((t) =>
-    t.toLowerCase().includes(query.toLowerCase())
-  );
-
+  const filtered = TEAMS.filter((t) => t.toLowerCase().includes(query.toLowerCase()));
   const isValid = TEAMS.includes(query);
 
   const handleSelect = (team: string) => {
@@ -69,12 +65,8 @@ function TeamCombobox({ value, onChange, placeholder = "Equipo", align = "left" 
 
   const handleBlur = () => {
     setOpen(false);
-    if (!isValid) {
-      // Revertir al valor confirmado anterior
-      setQuery(value);
-    } else {
-      onChange(query);
-    }
+    if (!isValid) setQuery(value);
+    else onChange(query);
   };
 
   return (
@@ -89,25 +81,18 @@ function TeamCombobox({ value, onChange, placeholder = "Equipo", align = "left" 
           className={cn(
             "w-full bg-gray-800 border rounded-lg px-2.5 py-2 pr-7 text-sm text-white",
             "focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors",
-            open || isValid
-              ? "border-gray-700"
-              : query !== ""
-              ? "border-red-800/60"
-              : "border-gray-700"
+            open || isValid ? "border-gray-700" : query !== "" ? "border-red-800/60" : "border-gray-700"
           )}
         />
         <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
       </div>
-
       {open && filtered.length > 0 && (
-        <div
-          className={cn(
-            "absolute z-20 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl",
-            "max-h-48 overflow-y-auto overscroll-contain",
-            "min-w-[160px] w-full",
-            align === "right" ? "right-0" : "left-0"
-          )}
-        >
+        <div className={cn(
+          "absolute z-20 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl",
+          "max-h-48 overflow-y-auto overscroll-contain",
+          "min-w-[160px] w-full",
+          align === "right" ? "right-0" : "left-0"
+        )}>
           {filtered.map((team) => (
             <button
               key={team}
@@ -115,9 +100,7 @@ function TeamCombobox({ value, onChange, placeholder = "Equipo", align = "left" 
               onMouseDown={(e) => { e.preventDefault(); handleSelect(team); }}
               className={cn(
                 "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
-                team === query
-                  ? "bg-indigo-700/40 text-white"
-                  : "hover:bg-gray-700 text-gray-200"
+                team === query ? "bg-indigo-700/40 text-white" : "hover:bg-gray-700 text-gray-200"
               )}
             >
               <FlagIcon team={team} className="w-5 h-3.5 rounded-sm shrink-0" />
@@ -130,7 +113,57 @@ function TeamCombobox({ value, onChange, placeholder = "Equipo", align = "left" 
   );
 }
 
-// ── Tipos de estado por partido ───────────────────────────────────────────────
+// ── Fila de marcador reutilizable ─────────────────────────────────────────────
+interface ScoreRowProps {
+  homeLabel: string;
+  awayLabel: string;
+  homeVal: string;
+  awayVal: string;
+  onHomeChange: (v: string) => void;
+  onAwayChange: (v: string) => void;
+  inputClass?: string;
+  size?: "lg" | "sm";
+}
+
+function ScoreRow({
+  homeLabel, awayLabel, homeVal, awayVal,
+  onHomeChange, onAwayChange,
+  inputClass = "",
+  size = "lg",
+}: ScoreRowProps) {
+  const h = size === "lg" ? "h-10 w-12 text-base" : "h-8 w-11 text-sm";
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex-1 text-right text-xs text-gray-400 truncate leading-tight">{homeLabel}</span>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <input
+          type="number" min="0" max="99"
+          value={homeVal}
+          onChange={(e) => onHomeChange(e.target.value)}
+          placeholder="—"
+          className={cn(
+            "text-center font-bold rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500",
+            h, inputClass
+          )}
+        />
+        <span className="text-gray-600 text-sm font-bold">:</span>
+        <input
+          type="number" min="0" max="99"
+          value={awayVal}
+          onChange={(e) => onAwayChange(e.target.value)}
+          placeholder="—"
+          className={cn(
+            "text-center font-bold rounded-lg border focus:outline-none focus:ring-2 focus:ring-indigo-500",
+            h, inputClass
+          )}
+        />
+      </div>
+      <span className="flex-1 text-xs text-gray-400 truncate leading-tight">{awayLabel}</span>
+    </div>
+  );
+}
+
+// ── Tipos ─────────────────────────────────────────────────────────────────────
 type MatchEditState = {
   home_team: string;
   away_team: string;
@@ -139,7 +172,8 @@ type MatchEditState = {
   away90: string;
   homeFinal: string;
   awayFinal: string;
-  penWinner: "" | "home" | "away";
+  penHome: string;
+  penAway: string;
   status: "scheduled" | "live" | "finished";
 };
 
@@ -161,7 +195,8 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
   const router = useRouter();
   const supabase = createClient();
 
-  // Estado inicial: combina campos de MatchManager + ResultsManager
+  const [activePhaseId, setActivePhaseId] = useState<number>(phases[0]?.id ?? 0);
+
   const [editState, setEditState] = useState<Record<string, MatchEditState>>(
     Object.fromEntries(
       matches.map((m) => [
@@ -174,7 +209,8 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
           away90: m.away_score?.toString() ?? "",
           homeFinal: m.home_score_final?.toString() ?? "",
           awayFinal: m.away_score_final?.toString() ?? "",
-          penWinner: (m.penalty_winner ?? "") as "" | "home" | "away",
+          penHome: m.penalty_home_score?.toString() ?? "",
+          penAway: m.penalty_away_score?.toString() ?? "",
           status: (m.status ?? "scheduled") as "scheduled" | "live" | "finished",
         },
       ])
@@ -184,11 +220,8 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-
-  // Estado para confirmación de eliminación
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null); // match.id en espera de confirmar
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-
   const [addState, setAddState] = useState<AddMatchState>({
     phase_id: phases[0]?.id?.toString() ?? "",
     home_team: "",
@@ -202,12 +235,11 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
   const update = (matchId: string, patch: Partial<MatchEditState>) =>
     setEditState((prev) => ({ ...prev, [matchId]: { ...prev[matchId], ...patch } }));
 
-  // ── Guardar partido (equipos + horario + resultado + penales) ─────────────
+  // ── Guardar partido ───────────────────────────────────────────────────────
   const saveMatch = async (match: Match) => {
     const st = editState[match.id];
     if (!st) return;
 
-    // Validaciones
     if (!TEAMS.includes(st.home_team) || !TEAMS.includes(st.away_team)) {
       setSaveError("Selecciona equipos válidos del catálogo");
       setTimeout(() => setSaveError(null), 3000);
@@ -219,9 +251,15 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
     const away90 = st.away90 !== "" && !isNaN(Number(st.away90)) ? parseInt(st.away90) : null;
     const homeFinal = st.homeFinal !== "" && !isNaN(Number(st.homeFinal)) ? parseInt(st.homeFinal) : null;
     const awayFinal = st.awayFinal !== "" && !isNaN(Number(st.awayFinal)) ? parseInt(st.awayFinal) : null;
-    const penWinner = st.penWinner || null;
 
-    // Ambos marcadores de 90' deben estar presentes o ninguno
+    // Marcador de penales y ganador derivado automáticamente
+    const penHome = st.penHome !== "" && !isNaN(Number(st.penHome)) ? parseInt(st.penHome) : null;
+    const penAway = st.penAway !== "" && !isNaN(Number(st.penAway)) ? parseInt(st.penAway) : null;
+    const penWinner: "home" | "away" | null =
+      penHome !== null && penAway !== null
+        ? penHome > penAway ? "home" : "away"
+        : null;
+
     if ((home90 === null) !== (away90 === null)) {
       setSaveError("Captura el marcador local Y visitante a 90 min");
       setTimeout(() => setSaveError(null), 3000);
@@ -233,8 +271,6 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
 
     const kickoff_at = mexicoInputToUtc(st.kickoff);
     const hasScores = home90 !== null && away90 !== null;
-
-    // Determinar el estado que se guardará
     const newStatus = hasScores ? st.status : "scheduled";
 
     const payload: Record<string, unknown> = {
@@ -244,6 +280,8 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
       home_score_final: homeFinal,
       away_score_final: awayFinal,
       penalty_winner: penWinner,
+      penalty_home_score: penHome,
+      penalty_away_score: penAway,
     };
 
     if (hasScores) {
@@ -255,7 +293,6 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
     const { error } = await supabase.from("matches").update(payload).eq("id", match.id);
 
     if (!error) {
-      // Calcular puntos SOLO si el partido se marca como finalizado
       if (hasScores && newStatus === "finished") {
         await supabase.rpc("calculate_points", {
           p_match_id: match.id,
@@ -264,7 +301,6 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
         });
       }
 
-      // Bitácora
       const action_type =
         hasScores && match.home_score === null && newStatus === "finished"
           ? "result_captured"
@@ -283,6 +319,8 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
           home_score: match.home_score,
           away_score: match.away_score,
           penalty_winner: match.penalty_winner,
+          penalty_home_score: match.penalty_home_score,
+          penalty_away_score: match.penalty_away_score,
         },
         after_value: {
           home_team: st.home_team,
@@ -290,6 +328,8 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
           kickoff_at,
           ...(hasScores && { home_score: home90, away_score: away90 }),
           penalty_winner: penWinner,
+          penalty_home_score: penHome,
+          penalty_away_score: penAway,
         },
       });
 
@@ -307,13 +347,8 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
   // ── Eliminar partido ──────────────────────────────────────────────────────
   const deleteMatch = async (match: Match) => {
     setDeleting(match.id);
-
-    // Eliminar pronósticos relacionados primero
     await supabase.from("predictions").delete().eq("match_id", match.id);
-
-    // Eliminar el partido
     const { error } = await supabase.from("matches").delete().eq("id", match.id);
-
     if (!error) {
       await supabase.from("audit_log").insert({
         action_type: "match_deleted",
@@ -330,7 +365,6 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
       setDeleteConfirm(null);
       router.refresh();
     }
-
     setDeleting(null);
   };
 
@@ -367,347 +401,344 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
     if (error) {
       setAddError(error.message);
     } else {
+      // Cambiar a la fase del partido recién agregado
+      setActivePhaseId(phaseId);
       setAddState({ phase_id: addState.phase_id, home_team: "", away_team: "", kickoff: "" });
       setShowAddForm(false);
       router.refresh();
     }
   };
 
-  // ── Agrupar partidos por fase ─────────────────────────────────────────────
-  const matchesByPhase = phases.map((ph) => ({
-    phase: ph,
-    phMatches: matches
-      .filter((m) => m.phase_id === ph.id)
-      .sort((a, b) => a.match_number - b.match_number),
-  }));
+  // ── Partidos de la fase activa ────────────────────────────────────────────
+  const activeMatches = matches
+    .filter((m) => m.phase_id === activePhaseId)
+    .sort((a, b) => a.match_number - b.match_number);
 
   return (
     <div>
-      {/* Nota informativa */}
-      <div className="mx-4 mt-4 mb-4 px-3 py-2 bg-yellow-900/20 border border-yellow-800/40 rounded-lg">
+      {/* ── Tabs de fases ─────────────────────────────────────────────────── */}
+      <div className="flex gap-1.5 px-4 pt-4 pb-3 overflow-x-auto border-b border-gray-800/40 scrollbar-hide">
+        {phases.map((ph) => {
+          const count = matches.filter((m) => m.phase_id === ph.id).length;
+          const finished = matches.filter(
+            (m) => m.phase_id === ph.id && m.status === "finished"
+          ).length;
+          return (
+            <button
+              key={ph.id}
+              onClick={() => setActivePhaseId(ph.id)}
+              className={cn(
+                "shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all whitespace-nowrap",
+                activePhaseId === ph.id
+                  ? "bg-indigo-700/40 border-indigo-600/60 text-indigo-300"
+                  : "bg-gray-800/40 border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-600"
+              )}
+            >
+              {ph.display_name}
+              <span className="ml-1 text-[10px] opacity-50">
+                {finished}/{count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Aviso ──────────────────────────────────────────────────────────── */}
+      <div className="mx-4 mt-3 mb-4 px-3 py-2 bg-yellow-900/20 border border-yellow-800/40 rounded-lg">
         <p className="text-xs text-yellow-400/80">
-          ⚠️ Horarios en <strong>hora Ciudad de México</strong>.
-          Los equipos se seleccionan del catálogo — escribe para filtrar.
-          El marcador a 90&apos; es el que cuenta para la quiniela.
+          ⚠️ Horarios en <strong>hora Ciudad de México</strong>. Solo el marcador de 90&apos; cuenta para la quiniela. T.E. y Penales son solo para mostrar a los participantes.
         </p>
       </div>
 
-      {/* Partidos por fase */}
-      <div className="space-y-0 divide-y divide-gray-800/40">
-        {matchesByPhase.map(({ phase, phMatches }) => (
-          <div key={phase.id}>
-            {/* Encabezado de fase */}
-            <div className="px-4 py-2 bg-gray-800/30">
-              <span className="text-xs text-indigo-400 font-semibold uppercase tracking-wider">
-                {phase.display_name}
-              </span>
-              <span className="text-xs text-gray-600 ml-2">({phMatches.length} partidos)</span>
-            </div>
+      {/* ── Lista de partidos ──────────────────────────────────────────────── */}
+      <div className="space-y-3 px-4 pb-4">
+        {activeMatches.length === 0 && (
+          <p className="text-center text-gray-600 text-sm py-10">
+            No hay partidos en esta fase todavía.
+          </p>
+        )}
 
-            <div className="divide-y divide-gray-800/40">
-              {phMatches.map((match) => {
-                const st = editState[match.id];
-                if (!st) return null;
-                const isSaving = saving === match.id;
-                const isSaved = saved === match.id;
-                const isDraw =
-                  st.home90 !== "" &&
-                  st.away90 !== "" &&
-                  !isNaN(Number(st.home90)) &&
-                  !isNaN(Number(st.away90)) &&
-                  st.home90 === st.away90;
-                const hasValidTeams = TEAMS.includes(st.home_team) && TEAMS.includes(st.away_team);
+        {activeMatches.map((match) => {
+          const st = editState[match.id];
+          if (!st) return null;
 
-                return (
-                  <div key={match.id} className="px-4 py-4 space-y-3">
+          const isSaving = saving === match.id;
+          const isSaved = saved === match.id;
+          const home90Num = st.home90 !== "" && !isNaN(Number(st.home90)) ? Number(st.home90) : null;
+          const away90Num = st.away90 !== "" && !isNaN(Number(st.away90)) ? Number(st.away90) : null;
+          const hasScores = home90Num !== null && away90Num !== null;
+          const isDraw = hasScores && home90Num === away90Num;
+          const hasValidTeams = TEAMS.includes(st.home_team) && TEAMS.includes(st.away_team);
+          // Mostrar sección de penales si empate en 90', o si ya hay datos de penales
+          const showPenales = isDraw || st.penHome !== "" || st.penAway !== "" || match.penalty_winner !== null;
 
-                    {/* Fila 1: Número + estado del partido */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-600 font-mono">P{match.match_number}</span>
-                      <span className={cn(
-                        "text-xs px-2 py-0.5 rounded-full border font-medium",
-                        match.status === "finished"
-                          ? "bg-gray-800 text-gray-500 border-gray-700"
-                          : match.status === "live"
-                          ? "bg-green-900/40 text-green-400 border-green-800/50"
-                          : "bg-blue-900/20 text-blue-400 border-blue-900/40"
-                      )}>
-                        {match.status === "finished" ? "Terminado"
-                          : match.status === "live" ? "⚡ En vivo"
-                          : "Programado"}
-                      </span>
-                      {match.home_score !== null && (
-                        <span className="text-xs text-gray-600">
-                          Resultado actual: {match.home_score}–{match.away_score}
-                          {match.penalty_winner && ` (pen. ${match.penalty_winner === "home" ? match.home_team : match.away_team})`}
-                        </span>
-                      )}
+          // Derivar ganador de penales para mostrar en UI
+          const penHomeNum = st.penHome !== "" ? Number(st.penHome) : null;
+          const penAwayNum = st.penAway !== "" ? Number(st.penAway) : null;
+          const derivedPenWinner =
+            penHomeNum !== null && penAwayNum !== null
+              ? penHomeNum > penAwayNum
+                ? st.home_team || "Local"
+                : st.away_team || "Visitante"
+              : null;
+
+          return (
+            <div
+              key={match.id}
+              className={cn(
+                "bg-gray-900 border rounded-xl overflow-hidden",
+                match.status === "live"
+                  ? "border-green-800/50"
+                  : match.status === "finished"
+                  ? "border-gray-800"
+                  : "border-gray-800"
+              )}
+            >
+              {/* Cabecera del partido */}
+              <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-gray-800/60 bg-gray-800/30">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[11px] font-mono text-gray-600 shrink-0">P{match.match_number}</span>
+                  {hasValidTeams && (
+                    <div className="flex items-center gap-1 text-xs text-gray-400 truncate">
+                      <FlagIcon team={st.home_team} className="w-4 h-3 rounded-sm shrink-0" />
+                      <span className="truncate max-w-[70px]">{st.home_team}</span>
+                      <span className="text-gray-700 mx-0.5 shrink-0">vs</span>
+                      <FlagIcon team={st.away_team} className="w-4 h-3 rounded-sm shrink-0" />
+                      <span className="truncate max-w-[70px]">{st.away_team}</span>
                     </div>
+                  )}
+                </div>
+                <span className={cn(
+                  "shrink-0 text-[10px] px-2 py-0.5 rounded-full border font-medium ml-2",
+                  match.status === "finished"
+                    ? "bg-gray-800 text-gray-500 border-gray-700"
+                    : match.status === "live"
+                    ? "bg-green-900/40 text-green-400 border-green-800/50"
+                    : "bg-blue-900/20 text-blue-400 border-blue-900/40"
+                )}>
+                  {match.status === "finished" ? "✓ Terminado"
+                    : match.status === "live" ? "⚡ En vivo"
+                    : "Programado"}
+                </span>
+              </div>
 
-                    {/* Fila 2: Equipos */}
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1.5">Equipos</label>
-                      <div className="grid grid-cols-[1fr_2rem_1fr] items-center gap-1.5">
-                        <TeamCombobox
-                          value={st.home_team}
-                          onChange={(v) => update(match.id, { home_team: v })}
-                          placeholder="Local"
-                          align="left"
-                        />
-                        <span className="text-gray-600 text-xs text-center font-bold">vs</span>
-                        <TeamCombobox
-                          value={st.away_team}
-                          onChange={(v) => update(match.id, { away_team: v })}
-                          placeholder="Visitante"
-                          align="right"
-                        />
-                      </div>
-                      {/* Vista previa con banderas */}
-                      {hasValidTeams && (
-                        <div className="flex items-center justify-center gap-2 mt-1.5">
-                          <FlagIcon team={st.home_team} className="w-5 h-3.5 rounded-sm" />
-                          <span className="text-xs text-gray-500">{st.home_team}</span>
-                          <span className="text-gray-700 text-xs">vs</span>
-                          <span className="text-xs text-gray-500">{st.away_team}</span>
-                          <FlagIcon team={st.away_team} className="w-5 h-3.5 rounded-sm" />
-                        </div>
-                      )}
-                    </div>
+              <div className="p-4 space-y-4">
 
-                    {/* Fila 3: Horario */}
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1.5">
-                        Fecha y hora (hora México)
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={st.kickoff}
-                        onChange={(e) => update(match.id, { kickoff: e.target.value })}
-                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      />
-                    </div>
+                {/* Equipos */}
+                <div>
+                  <label className="text-[11px] text-gray-500 uppercase tracking-wide block mb-1.5">Equipos</label>
+                  <div className="grid grid-cols-[1fr_2rem_1fr] items-center gap-1.5">
+                    <TeamCombobox
+                      value={st.home_team}
+                      onChange={(v) => update(match.id, { home_team: v })}
+                      placeholder="Local"
+                      align="left"
+                    />
+                    <span className="text-gray-600 text-xs text-center font-bold">vs</span>
+                    <TeamCombobox
+                      value={st.away_team}
+                      onChange={(v) => update(match.id, { away_team: v })}
+                      placeholder="Visitante"
+                      align="right"
+                    />
+                  </div>
+                </div>
 
-                    {/* Fila 4: Resultado a 90 min */}
-                    <div>
-                      <p className="text-xs text-indigo-400 font-medium mb-1.5">
-                        ⚽ Resultado 90 min <span className="text-gray-600 font-normal">(cuenta para la quiniela)</span>
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <span className="flex-1 text-right text-xs text-gray-400 truncate">{st.home_team || "Local"}</span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <input
-                            type="number" min="0" max="99"
-                            value={st.home90}
-                            onChange={(e) => {
-                              const patch: Partial<MatchEditState> = { home90: e.target.value };
-                              // Al ingresar el primer marcador en un partido programado, default a finalizado
-                              if (e.target.value !== "" && st.status === "scheduled") {
-                                patch.status = "finished";
-                              }
-                              update(match.id, patch);
-                            }}
-                            placeholder="—"
-                            className="w-11 h-9 text-center font-bold rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          <span className="text-gray-600">:</span>
-                          <input
-                            type="number" min="0" max="99"
-                            value={st.away90}
-                            onChange={(e) => {
-                              const patch: Partial<MatchEditState> = { away90: e.target.value };
-                              if (e.target.value !== "" && st.status === "scheduled") {
-                                patch.status = "finished";
-                              }
-                              update(match.id, patch);
-                            }}
-                            placeholder="—"
-                            className="w-11 h-9 text-center font-bold rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                        </div>
-                        <span className="flex-1 text-xs text-gray-400 truncate">{st.away_team || "Visitante"}</span>
-                      </div>
-                    </div>
+                {/* Horario */}
+                <div>
+                  <label className="text-[11px] text-gray-500 uppercase tracking-wide block mb-1.5">Horario (hora México)</label>
+                  <input
+                    type="datetime-local"
+                    value={st.kickoff}
+                    onChange={(e) => update(match.id, { kickoff: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
 
-                    {/* Fila 4b: Estado del partido (solo cuando hay marcador) */}
-                    {st.home90 !== "" && st.away90 !== "" && (
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1.5">Estado del partido</p>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => update(match.id, { status: "live" })}
-                            className={cn(
-                              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                              st.status === "live"
-                                ? "bg-green-900/30 border-green-700/60 text-green-400"
-                                : "bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-600"
-                            )}
-                          >
-                            ⚡ En vivo
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => update(match.id, { status: "finished" })}
-                            className={cn(
-                              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                              st.status === "finished"
-                                ? "bg-gray-700/60 border-gray-500 text-white"
-                                : "bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-600"
-                            )}
-                          >
-                            ✓ Finalizado
-                          </button>
-                        </div>
-                        {st.status === "live" && (
-                          <p className="text-[10px] text-gray-600 mt-1">
-                            Marcador visible en vivo. Los puntos se calculan al marcar Finalizado.
-                          </p>
-                        )}
-                      </div>
-                    )}
+                {/* ── Tiempo Regular (90') ──────────────────────────────── */}
+                <div className="bg-indigo-950/25 border border-indigo-900/40 rounded-xl p-3.5">
+                  <p className="text-xs text-indigo-400 font-semibold mb-2.5">
+                    ⚽ Tiempo Regular — 90 min
+                    <span className="text-indigo-700 font-normal ml-1.5">cuenta para la quiniela</span>
+                  </p>
+                  <ScoreRow
+                    homeLabel={st.home_team || "Local"}
+                    awayLabel={st.away_team || "Visitante"}
+                    homeVal={st.home90}
+                    awayVal={st.away90}
+                    onHomeChange={(v) => {
+                      const patch: Partial<MatchEditState> = { home90: v };
+                      if (v !== "" && st.status === "scheduled") patch.status = "finished";
+                      update(match.id, patch);
+                    }}
+                    onAwayChange={(v) => {
+                      const patch: Partial<MatchEditState> = { away90: v };
+                      if (v !== "" && st.status === "scheduled") patch.status = "finished";
+                      update(match.id, patch);
+                    }}
+                    inputClass="bg-indigo-900/30 border-indigo-800/50 text-white"
+                  />
 
-                    {/* Fila 5: Resultado final (T.E.) — solo display */}
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1.5">
-                        🏆 Resultado final T.E. <span className="text-gray-600">(solo display, opcional)</span>
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <span className="flex-1 text-right text-xs text-gray-600 truncate">{st.home_team || "Local"}</span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <input
-                            type="number" min="0" max="99"
-                            value={st.homeFinal}
-                            onChange={(e) => update(match.id, { homeFinal: e.target.value })}
-                            placeholder="—"
-                            className="w-11 h-8 text-center font-bold rounded-lg bg-gray-800/60 border border-gray-700/60 text-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-gray-600"
-                          />
-                          <span className="text-gray-700 text-xs">:</span>
-                          <input
-                            type="number" min="0" max="99"
-                            value={st.awayFinal}
-                            onChange={(e) => update(match.id, { awayFinal: e.target.value })}
-                            placeholder="—"
-                            className="w-11 h-8 text-center font-bold rounded-lg bg-gray-800/60 border border-gray-700/60 text-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-gray-600"
-                          />
-                        </div>
-                        <span className="flex-1 text-xs text-gray-600 truncate">{st.away_team || "Visitante"}</span>
-                      </div>
-                    </div>
-
-                    {/* Fila 6: Ganador en penales (solo si empate en 90') */}
-                    {isDraw && (
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1.5">
-                          🎯 Ganó en penales <span className="text-gray-600">(solo display)</span>
-                        </p>
-                        <div className="flex gap-2 flex-wrap">
-                          {[
-                            { val: "" as const, label: "Ninguno (T.E.)" },
-                            { val: "home" as const, label: st.home_team || "Local" },
-                            { val: "away" as const, label: st.away_team || "Visitante" },
-                          ].map(({ val, label }) => (
-                            <button
-                              key={val || "none"}
-                              type="button"
-                              onClick={() => update(match.id, { penWinner: val })}
-                              className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                                st.penWinner === val
-                                  ? "bg-indigo-600/30 border-indigo-600/60 text-indigo-300"
-                                  : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
-                              )}
-                            >
-                              {val !== "" && <FlagIcon team={val === "home" ? st.home_team : st.away_team} className="w-4 h-3 rounded-sm" />}
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Error de guardado */}
-                    {saveError && saving === null && saved === null && (
-                      <p className="text-xs text-red-400 bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-1.5">
-                        {saveError}
-                      </p>
-                    )}
-
-                    {/* Acciones: Guardar + Eliminar */}
-                    {deleteConfirm === match.id ? (
-                      /* Panel de confirmación de eliminación */
-                      <div className="bg-red-950/30 border border-red-900/50 rounded-xl p-3 space-y-2">
-                        <div className="flex items-start gap-2">
-                          <AlertTriangle size={15} className="text-red-400 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-semibold text-red-300">¿Eliminar este partido?</p>
-                            <p className="text-xs text-red-400/80 mt-0.5">
-                              P{match.match_number}: {match.home_team} vs {match.away_team}
-                            </p>
-                            <p className="text-xs text-red-500/70 mt-1">
-                              Se eliminarán también todos los pronósticos capturados para este partido. Esta acción no se puede deshacer.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={() => setDeleteConfirm(null)}
-                            className="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-400 text-xs hover:border-gray-600 transition-colors"
-                          >
-                            Cancelar
-                          </button>
-                          <button
-                            onClick={() => deleteMatch(match)}
-                            disabled={deleting === match.id}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-xs font-medium transition-colors disabled:opacity-50"
-                          >
-                            {deleting === match.id
-                              ? <Loader2 size={12} className="animate-spin" />
-                              : <Trash2 size={12} />}
-                            Sí, eliminar
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between gap-2">
-                        {/* Botón eliminar — secundario, a la izquierda */}
+                  {/* Estado — solo cuando hay marcador */}
+                  {hasScores && (
+                    <div className="mt-3.5 pt-3 border-t border-indigo-900/30">
+                      <p className="text-[11px] text-gray-500 mb-1.5">Estado del partido</p>
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => setDeleteConfirm(match.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-700 text-gray-500 text-xs hover:border-red-800/60 hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 size={12} /> Eliminar
-                        </button>
-
-                        {/* Botón guardar */}
-                        <button
-                          onClick={() => saveMatch(match)}
-                          disabled={isSaving || !hasValidTeams || !st.kickoff}
+                          type="button"
+                          onClick={() => update(match.id, { status: "live" })}
                           className={cn(
-                            "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                            isSaved
-                              ? "bg-green-900/40 text-green-400 border border-green-800/40"
-                              : "bg-indigo-700 hover:bg-indigo-600 text-white disabled:opacity-40"
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                            st.status === "live"
+                              ? "bg-green-900/40 border-green-700/60 text-green-400"
+                              : "bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-600"
                           )}
                         >
-                          {isSaving ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : isSaved ? (
-                            <><Check size={14} /> Guardado</>
-                          ) : (
-                            <><Save size={14} /> Guardar</>
+                          ⚡ En vivo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => update(match.id, { status: "finished" })}
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                            st.status === "finished"
+                              ? "bg-gray-700/60 border-gray-500 text-white"
+                              : "bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-600"
                           )}
+                        >
+                          ✓ Finalizado
                         </button>
                       </div>
+                      {st.status === "live" && (
+                        <p className="text-[10px] text-green-600/70 mt-1.5">
+                          Marcador visible en tiempo real. Los puntos se calculan al marcar Finalizado.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Tiempo Extra ──────────────────────────────────────── */}
+                <div className="bg-gray-800/30 border border-gray-700/40 rounded-xl p-3.5">
+                  <p className="text-xs text-gray-500 font-medium mb-2.5">
+                    🕐 Tiempo Extra
+                    <span className="text-gray-600 font-normal ml-1.5">solo display — opcional</span>
+                  </p>
+                  <ScoreRow
+                    homeLabel={st.home_team || "Local"}
+                    awayLabel={st.away_team || "Visitante"}
+                    homeVal={st.homeFinal}
+                    awayVal={st.awayFinal}
+                    onHomeChange={(v) => update(match.id, { homeFinal: v })}
+                    onAwayChange={(v) => update(match.id, { awayFinal: v })}
+                    inputClass="bg-gray-800 border-gray-700 text-gray-300"
+                    size="sm"
+                  />
+                  <p className="text-[10px] text-gray-600 mt-2 leading-snug">
+                    Marcador acumulado incluyendo prórroga. Ej: si 90&apos; fue 1–1 y marcó 1 gol en T.E., anota 2–1.
+                  </p>
+                </div>
+
+                {/* ── Penales ───────────────────────────────────────────── */}
+                {showPenales && (
+                  <div className="bg-gray-800/30 border border-violet-900/30 rounded-xl p-3.5">
+                    <p className="text-xs text-violet-400 font-medium mb-2.5">
+                      🎯 Tanda de Penales
+                      <span className="text-gray-600 font-normal ml-1.5">solo display — opcional</span>
+                    </p>
+                    <ScoreRow
+                      homeLabel={st.home_team || "Local"}
+                      awayLabel={st.away_team || "Visitante"}
+                      homeVal={st.penHome}
+                      awayVal={st.penAway}
+                      onHomeChange={(v) => update(match.id, { penHome: v })}
+                      onAwayChange={(v) => update(match.id, { penAway: v })}
+                      inputClass="bg-gray-800 border-violet-900/40 text-gray-300"
+                      size="sm"
+                    />
+                    {derivedPenWinner && (
+                      <p className="text-[10px] text-violet-500/80 mt-2">
+                        Ganador automático: <span className="font-semibold text-violet-400">{derivedPenWinner}</span>
+                      </p>
                     )}
                   </div>
-                );
-              })}
+                )}
+
+                {/* Error de guardado */}
+                {saveError && saving === null && saved === null && (
+                  <p className="text-xs text-red-400 bg-red-950/30 border border-red-900/40 rounded-lg px-3 py-1.5">
+                    {saveError}
+                  </p>
+                )}
+
+                {/* Acciones */}
+                {deleteConfirm === match.id ? (
+                  <div className="bg-red-950/30 border border-red-900/50 rounded-xl p-3 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle size={15} className="text-red-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-red-300">¿Eliminar este partido?</p>
+                        <p className="text-xs text-red-400/80 mt-0.5">
+                          P{match.match_number}: {match.home_team} vs {match.away_team}
+                        </p>
+                        <p className="text-xs text-red-500/70 mt-1">
+                          Se eliminarán también todos los pronósticos. Esta acción no se puede deshacer.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => setDeleteConfirm(null)}
+                        className="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-400 text-xs hover:border-gray-600 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={() => deleteMatch(match)}
+                        disabled={deleting === match.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-xs font-medium transition-colors disabled:opacity-50"
+                      >
+                        {deleting === match.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                        Sí, eliminar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => setDeleteConfirm(match.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-700 text-gray-500 text-xs hover:border-red-800/60 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={12} /> Eliminar
+                    </button>
+                    <button
+                      onClick={() => saveMatch(match)}
+                      disabled={isSaving || !hasValidTeams || !st.kickoff}
+                      className={cn(
+                        "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                        isSaved
+                          ? "bg-green-900/40 text-green-400 border border-green-800/40"
+                          : "bg-indigo-700 hover:bg-indigo-600 text-white disabled:opacity-40"
+                      )}
+                    >
+                      {isSaving ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : isSaved ? (
+                        <><Check size={14} /> Guardado</>
+                      ) : (
+                        <><Save size={14} /> Guardar</>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Agregar partido nuevo */}
-      <div className="px-4 py-4 border-t border-gray-800/40">
+      {/* ── Agregar partido nuevo ──────────────────────────────────────────── */}
+      <div className="px-4 pb-6 border-t border-gray-800/40 pt-4">
         {!showAddForm ? (
           <button
             onClick={() => setShowAddForm(true)}

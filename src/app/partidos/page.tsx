@@ -132,42 +132,42 @@ export default async function PartidosPage() {
 
                                   {/* Marcador */}
                                   {(() => {
-                                    const hasFinalResult = isFinished &&
-                                      match.home_score_final !== null && (
-                                        match.penalty_winner !== null ||
-                                        match.home_score_final !== match.home_score ||
-                                        match.away_score_final !== match.away_score
-                                      );
-                                    const sameScore = hasFinalResult &&
-                                      match.home_score_final === match.home_score &&
-                                      match.away_score_final === match.away_score;
-                                    const penWinner = match.penalty_winner === "home"
-                                      ? match.home_team : match.away_team;
+                                    const hasET = isFinished &&
+                                      match.home_score_final !== null &&
+                                      (match.home_score_final !== match.home_score ||
+                                        match.away_score_final !== match.away_score);
+                                    const hasPen = !!match.penalty_winner;
+                                    const penTally =
+                                      match.penalty_home_score !== null &&
+                                      match.penalty_away_score !== null;
                                     return (
-                                      <div className="flex flex-col items-center shrink-0 px-2 min-w-[72px] justify-center">
+                                      <div className="flex flex-col items-center shrink-0 px-2 min-w-[80px] justify-center gap-0.5">
                                         {isFinished || isLive ? (
                                           <>
-                                            {/* Marcador 90 min */}
+                                            {/* 90 min */}
                                             <span className={`text-lg font-bold tabular-nums leading-tight ${
                                               isLive ? "text-green-300" : "text-white"
                                             }`}>
                                               {match.home_score} – {match.away_score}
                                             </span>
-                                            <span className="text-[10px] text-gray-600 mt-0.5">
+                                            <span className="text-[10px] text-gray-600">
                                               {isLive
                                                 ? (match.current_minute ? `${match.current_minute}'` : "En vivo")
                                                 : "90'"}
                                             </span>
-                                            {/* Resultado final T.E. (solo si difiere del 90 min) */}
-                                            {hasFinalResult && !sameScore && (
-                                              <span className="text-[11px] text-gray-400 font-semibold tabular-nums mt-1 leading-none">
+                                            {/* T.E. */}
+                                            {hasET && (
+                                              <span className="text-[11px] text-gray-400 font-semibold tabular-nums leading-none mt-0.5">
                                                 T.E. {match.home_score_final}–{match.away_score_final}
                                               </span>
                                             )}
-                                            {/* Ganador por penales */}
-                                            {match.penalty_winner && (
-                                              <span className="text-[10px] text-indigo-400 mt-0.5 text-center leading-tight">
-                                                🎯 pen. {penWinner}
+                                            {/* Penales */}
+                                            {hasPen && (
+                                              <span className="text-[10px] text-violet-400 text-center leading-tight mt-0.5">
+                                                🎯{penTally
+                                                  ? ` ${match.penalty_home_score}–${match.penalty_away_score} pen.`
+                                                  : ` pen. ${match.penalty_winner === "home" ? match.home_team : match.away_team}`
+                                                }
                                               </span>
                                             )}
                                           </>

@@ -41,6 +41,10 @@ export type Match = {
   away_score_final: number | null;
   /** Quién avanzó en penales: 'home' | 'away' | null (solo display) */
   penalty_winner: "home" | "away" | null;
+  /** Goles del local en la tanda de penales, ej. 4 en 4-3 (solo display) */
+  penalty_home_score: number | null;
+  /** Goles del visitante en la tanda de penales, ej. 3 en 4-3 (solo display) */
+  penalty_away_score: number | null;
   status: "scheduled" | "live" | "finished";
   api_match_id: string | null;
   current_minute: number | null;

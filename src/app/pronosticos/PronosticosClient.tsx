@@ -317,28 +317,34 @@ export default function PronosticosClient({ matches, phases, participantId, init
                           {/* Resultado final (ET/penales) */}
                           {hasFinalResult && (() => {
                             const isPen = !!match.penalty_winner;
-                            // Si fue solo penales (marcador final = 90'), mostrar solo el ganador
                             const sameScore =
                               match.home_score_final === match.home_score &&
                               match.away_score_final === match.away_score;
-                            const winner =
-                              match.penalty_winner === "home"
-                                ? match.home_team
-                                : match.away_team;
+                            const penTally =
+                              match.penalty_home_score !== null &&
+                              match.penalty_away_score !== null;
                             return (
-                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-700/40 bg-gray-800/40">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {/* T.E. badge */}
                                 {!sameScore && (
-                                  <>
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-700/40 bg-gray-800/40">
                                     <span className="text-xs text-gray-600 font-medium">T.E.</span>
                                     <span className="text-sm font-bold tabular-nums text-gray-400">
                                       {match.home_score_final} – {match.away_score_final}
                                     </span>
-                                  </>
+                                  </div>
                                 )}
+                                {/* Penales badge */}
                                 {isPen && (
-                                  <span className="text-xs text-gray-500">
-                                    {!sameScore ? "·" : ""} 🎯 pen. <span className="text-gray-400 font-medium">{winner}</span>
-                                  </span>
+                                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-violet-900/30 bg-violet-950/20">
+                                    <span className="text-xs">🎯</span>
+                                    {penTally && (
+                                      <span className="text-xs font-bold tabular-nums text-violet-400">
+                                        {match.penalty_home_score}–{match.penalty_away_score}
+                                      </span>
+                                    )}
+                                    <span className="text-xs text-violet-500/80">pen.</span>
+                                  </div>
                                 )}
                               </div>
                             );
