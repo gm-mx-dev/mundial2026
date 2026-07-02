@@ -6,8 +6,6 @@ import { Download, RefreshCw, DatabaseBackup } from "lucide-react";
 interface BackupFile {
   name: string;
   metadata?: { size?: number } | null;
-  created_at?: string;
-  updated_at?: string;
 }
 
 interface Props {
