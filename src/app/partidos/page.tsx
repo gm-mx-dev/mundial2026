@@ -131,27 +131,52 @@ export default async function PartidosPage() {
                                   </div>
 
                                   {/* Marcador */}
-                                  <div className="flex flex-col items-center shrink-0 px-2 min-w-[72px] justify-center">
-                                    {isFinished || isLive ? (
-                                      <>
-                                        <span className={`text-lg font-bold tabular-nums leading-tight ${
-                                          isLive ? "text-green-300" : "text-white"
-                                        }`}>
-                                          {match.home_score} – {match.away_score}
-                                        </span>
-                                        {!isLive && (
-                                          <span className="text-[10px] text-gray-600 mt-0.5">90 min</span>
+                                  {(() => {
+                                    const hasFinalResult = isFinished &&
+                                      match.home_score_final !== null && (
+                                        match.penalty_winner !== null ||
+                                        match.home_score_final !== match.home_score ||
+                                        match.away_score_final !== match.away_score
+                                      );
+                                    const sameScore = hasFinalResult &&
+                                      match.home_score_final === match.home_score &&
+                                      match.away_score_final === match.away_score;
+                                    const penWinner = match.penalty_winner === "home"
+                                      ? match.home_team : match.away_team;
+                                    return (
+                                      <div className="flex flex-col items-center shrink-0 px-2 min-w-[72px] justify-center">
+                                        {isFinished || isLive ? (
+                                          <>
+                                            {/* Marcador 90 min */}
+                                            <span className={`text-lg font-bold tabular-nums leading-tight ${
+                                              isLive ? "text-green-300" : "text-white"
+                                            }`}>
+                                              {match.home_score} – {match.away_score}
+                                            </span>
+                                            <span className="text-[10px] text-gray-600 mt-0.5">
+                                              {isLive
+                                                ? (match.current_minute ? `${match.current_minute}'` : "En vivo")
+                                                : "90'"}
+                                            </span>
+                                            {/* Resultado final T.E. (solo si difiere del 90 min) */}
+                                            {hasFinalResult && !sameScore && (
+                                              <span className="text-[11px] text-gray-400 font-semibold tabular-nums mt-1 leading-none">
+                                                T.E. {match.home_score_final}–{match.away_score_final}
+                                              </span>
+                                            )}
+                                            {/* Ganador por penales */}
+                                            {match.penalty_winner && (
+                                              <span className="text-[10px] text-indigo-400 mt-0.5 text-center leading-tight">
+                                                🎯 pen. {penWinner}
+                                              </span>
+                                            )}
+                                          </>
+                                        ) : (
+                                          <span className="text-gray-600 text-sm font-medium">vs</span>
                                         )}
-                                        {match.penalty_winner && (
-                                          <span className="text-[10px] text-indigo-400 mt-0.5 text-center leading-tight">
-                                            {match.penalty_winner === "home" ? match.home_team : match.away_team} pen.
-                                          </span>
-                                        )}
-                                      </>
-                                    ) : (
-                                      <span className="text-gray-600 text-sm font-medium">vs</span>
-                                    )}
-                                  </div>
+                                      </div>
+                                    );
+                                  })()}
 
                                   {/* Visitante */}
                                   <div className="flex-1 flex items-center">
