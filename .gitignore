@@ -31,3 +31,6 @@ QuinielaMundial2026/
 mock/
 api-football.txt
 password-supabase.txt
+
+# Backups locales descargados de Supabase Storage
+backups/
