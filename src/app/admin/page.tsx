@@ -100,7 +100,7 @@ export default async function AdminPage({
   // recalcular y bitacora no necesitan datos adicionales
 
   // Respaldo: listar archivos del bucket privado (necesita service role)
-  let backups: { name: string; metadata?: { size?: number }; created_at?: string; updated_at?: string }[] = [];
+  let backups: { name: string; metadata?: { size?: number } | null; created_at?: string; updated_at?: string }[] = [];
   if (activeTab === "respaldo") {
     const adminClient = tryAdminClient();
     if (adminClient) {

@@ -5,7 +5,7 @@ import { Download, RefreshCw, DatabaseBackup } from "lucide-react";
 
 interface BackupFile {
   name: string;
-  metadata?: { size?: number };
+  metadata?: { size?: number } | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -26,7 +26,7 @@ function formatDateName(name: string) {
   });
 }
 
-function formatSize(metadata?: { size?: number }) {
+function formatSize(metadata?: { size?: number } | null) {
   const bytes = metadata?.size;
   if (!bytes) return null;
   if (bytes < 1024) return `${bytes} B`;
