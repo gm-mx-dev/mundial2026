@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { Match, Phase, Participant } from "@/types/database";
 import FlagIcon from "@/components/FlagIcon";
@@ -57,38 +58,67 @@ export default function TodosClient({
     phase: ph,
     isLocked: lockedSet.has(ph.id),
     matches: matches.filter((m) => m.phase_id === ph.id),
-  }));
+  })).filter((g) => g.matches.length > 0);
 
-  const allMatches = phaseGroups.flatMap((g) => g.matches);
+  // Toggle de fases — todas visibles por default
+  const [visiblePhases, setVisiblePhases] = useState<Set<number>>(
+    () => new Set(phaseGroups.map((g) => g.phase.id))
+  );
+
+  const togglePhase = (phaseId: number) => {
+    setVisiblePhases((prev) => {
+      const next = new Set(prev);
+      if (next.has(phaseId)) next.delete(phaseId);
+      else next.add(phaseId);
+      return next;
+    });
+  };
+
+  const allMatches = phaseGroups
+    .filter((g) => visiblePhases.has(g.phase.id))
+    .flatMap((g) => g.matches);
   const NAME_W = 140;
 
   return (
     <div>
       {/* ═══════════════════════════════════════════
-          INFO DE FASES — fuera del scroll, siempre visible
+          FILTROS DE FASES — toggles acumulativos
       ═══════════════════════════════════════════ */}
-      <div className="flex items-center gap-1.5 flex-wrap mb-1.5 px-4">
-        <span className="text-[10px] text-gray-700 font-medium">Fases:</span>
-        {phaseGroups.map((g) =>
-          g.matches.length > 0 ? (
-            <span
+      <div className="flex items-center gap-1.5 flex-wrap mb-2 px-4">
+        {phaseGroups.map((g) => {
+          const isVisible = visiblePhases.has(g.phase.id);
+          const finished = g.matches.filter((m) => m.status === "finished").length;
+          return (
+            <button
               key={g.phase.id}
+              onClick={() => togglePhase(g.phase.id)}
               className={cn(
-                "text-[9px] px-1.5 py-0.5 rounded-full border font-medium whitespace-nowrap",
-                g.isLocked
-                  ? "text-red-400 border-red-900/40 bg-red-950/20"
-                  : "text-green-400 border-green-900/40 bg-green-950/20"
+                "text-[10px] px-2 py-1 rounded-lg border font-medium whitespace-nowrap transition-all",
+                isVisible
+                  ? "bg-indigo-700/30 border-indigo-600/50 text-indigo-300"
+                  : "bg-gray-800/30 border-gray-700/50 text-gray-600 line-through"
               )}
             >
-              {g.phase.display_name} {g.isLocked ? "🔒" : "✏️"}
-            </span>
-          ) : null
-        )}
+              {g.phase.display_name}
+              <span className={cn(
+                "ml-1 text-[9px]",
+                isVisible ? "text-indigo-500" : "text-gray-700"
+              )}>
+                {finished}/{g.matches.length}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Contador — fuera del scroll */}
       <p className="text-[11px] text-gray-600 mb-1 px-4">
         {sorted.length} participante{sorted.length !== 1 ? "s" : ""}
+        {visiblePhases.size < phaseGroups.length && (
+          <span className="ml-1 text-gray-700">
+            · {allMatches.length} partido{allMatches.length !== 1 ? "s" : ""} visibles
+          </span>
+        )}
       </p>
 
       {/*
