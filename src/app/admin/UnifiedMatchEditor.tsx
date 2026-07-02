@@ -140,6 +140,7 @@ type MatchEditState = {
   homeFinal: string;
   awayFinal: string;
   penWinner: "" | "home" | "away";
+  status: "scheduled" | "live" | "finished";
 };
 
 type AddMatchState = {
@@ -174,6 +175,7 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
           homeFinal: m.home_score_final?.toString() ?? "",
           awayFinal: m.away_score_final?.toString() ?? "",
           penWinner: (m.penalty_winner ?? "") as "" | "home" | "away",
+          status: (m.status ?? "scheduled") as "scheduled" | "live" | "finished",
         },
       ])
     )
@@ -232,6 +234,9 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
     const kickoff_at = mexicoInputToUtc(st.kickoff);
     const hasScores = home90 !== null && away90 !== null;
 
+    // Determinar el estado que se guardará
+    const newStatus = hasScores ? st.status : "scheduled";
+
     const payload: Record<string, unknown> = {
       home_team: st.home_team,
       away_team: st.away_team,
@@ -244,14 +249,14 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
     if (hasScores) {
       payload.home_score = home90;
       payload.away_score = away90;
-      payload.status = "finished";
+      payload.status = newStatus;
     }
 
     const { error } = await supabase.from("matches").update(payload).eq("id", match.id);
 
     if (!error) {
-      // Calcular puntos si se capturó resultado a 90'
-      if (hasScores) {
+      // Calcular puntos SOLO si el partido se marca como finalizado
+      if (hasScores && newStatus === "finished") {
         await supabase.rpc("calculate_points", {
           p_match_id: match.id,
           p_home_score: home90!,
@@ -261,7 +266,7 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
 
       // Bitácora
       const action_type =
-        hasScores && match.home_score === null
+        hasScores && match.home_score === null && newStatus === "finished"
           ? "result_captured"
           : hasScores
           ? "result_updated"
@@ -493,7 +498,14 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
                           <input
                             type="number" min="0" max="99"
                             value={st.home90}
-                            onChange={(e) => update(match.id, { home90: e.target.value })}
+                            onChange={(e) => {
+                              const patch: Partial<MatchEditState> = { home90: e.target.value };
+                              // Al ingresar el primer marcador en un partido programado, default a finalizado
+                              if (e.target.value !== "" && st.status === "scheduled") {
+                                patch.status = "finished";
+                              }
+                              update(match.id, patch);
+                            }}
                             placeholder="—"
                             className="w-11 h-9 text-center font-bold rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
@@ -501,7 +513,13 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
                           <input
                             type="number" min="0" max="99"
                             value={st.away90}
-                            onChange={(e) => update(match.id, { away90: e.target.value })}
+                            onChange={(e) => {
+                              const patch: Partial<MatchEditState> = { away90: e.target.value };
+                              if (e.target.value !== "" && st.status === "scheduled") {
+                                patch.status = "finished";
+                              }
+                              update(match.id, patch);
+                            }}
                             placeholder="—"
                             className="w-11 h-9 text-center font-bold rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
@@ -509,6 +527,44 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
                         <span className="flex-1 text-xs text-gray-400 truncate">{st.away_team || "Visitante"}</span>
                       </div>
                     </div>
+
+                    {/* Fila 4b: Estado del partido (solo cuando hay marcador) */}
+                    {st.home90 !== "" && st.away90 !== "" && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1.5">Estado del partido</p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => update(match.id, { status: "live" })}
+                            className={cn(
+                              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                              st.status === "live"
+                                ? "bg-green-900/30 border-green-700/60 text-green-400"
+                                : "bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-600"
+                            )}
+                          >
+                            ⚡ En vivo
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => update(match.id, { status: "finished" })}
+                            className={cn(
+                              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                              st.status === "finished"
+                                ? "bg-gray-700/60 border-gray-500 text-white"
+                                : "bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-600"
+                            )}
+                          >
+                            ✓ Finalizado
+                          </button>
+                        </div>
+                        {st.status === "live" && (
+                          <p className="text-[10px] text-gray-600 mt-1">
+                            Marcador visible en vivo. Los puntos se calculan al marcar Finalizado.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {/* Fila 5: Resultado final (T.E.) — solo display */}
                     <div>
