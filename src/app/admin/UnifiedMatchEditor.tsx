@@ -469,8 +469,16 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
           const hasScores = home90Num !== null && away90Num !== null;
           const isDraw = hasScores && home90Num === away90Num;
           const hasValidTeams = TEAMS.includes(st.home_team) && TEAMS.includes(st.away_team);
-          // Mostrar sección de penales si empate en 90', o si ya hay datos de penales
-          const showPenales = isDraw || st.penHome !== "" || st.penAway !== "" || match.penalty_winner !== null;
+
+          // T.E.: mostrar si 90' es empate, o si ya hay datos de T.E. guardados
+          const homeFinalNum = st.homeFinal !== "" && !isNaN(Number(st.homeFinal)) ? Number(st.homeFinal) : null;
+          const awayFinalNum = st.awayFinal !== "" && !isNaN(Number(st.awayFinal)) ? Number(st.awayFinal) : null;
+          const hasExistingTE = st.homeFinal !== "" || st.awayFinal !== "";
+          const showTE = isDraw || hasExistingTE;
+
+          // Penales: mostrar si T.E. también queda empate, o si ya hay datos de penales
+          const isDrawAfterET = homeFinalNum !== null && awayFinalNum !== null && homeFinalNum === awayFinalNum;
+          const showPenales = isDrawAfterET || st.penHome !== "" || st.penAway !== "" || match.penalty_winner !== null;
 
           // Derivar ganador de penales para mostrar en UI
           const penHomeNum = st.penHome !== "" ? Number(st.penHome) : null;
@@ -619,25 +627,27 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
                 </div>
 
                 {/* ── Tiempo Extra ──────────────────────────────────────── */}
-                <div className="bg-gray-800/30 border border-gray-700/40 rounded-xl p-3.5">
-                  <p className="text-xs text-gray-500 font-medium mb-2.5">
-                    🕐 Tiempo Extra
-                    <span className="text-gray-600 font-normal ml-1.5">solo display — opcional</span>
-                  </p>
-                  <ScoreRow
-                    homeLabel={st.home_team || "Local"}
-                    awayLabel={st.away_team || "Visitante"}
-                    homeVal={st.homeFinal}
-                    awayVal={st.awayFinal}
-                    onHomeChange={(v) => update(match.id, { homeFinal: v })}
-                    onAwayChange={(v) => update(match.id, { awayFinal: v })}
-                    inputClass="bg-gray-800 border-gray-700 text-gray-300"
-                    size="sm"
-                  />
-                  <p className="text-[10px] text-gray-600 mt-2 leading-snug">
-                    Marcador acumulado incluyendo prórroga. Ej: si 90&apos; fue 1–1 y marcó 1 gol en T.E., anota 2–1.
-                  </p>
-                </div>
+                {showTE && (
+                  <div className="bg-gray-800/30 border border-gray-700/40 rounded-xl p-3.5">
+                    <p className="text-xs text-gray-500 font-medium mb-2.5">
+                      🕐 Tiempo Extra
+                      <span className="text-gray-600 font-normal ml-1.5">solo display — opcional</span>
+                    </p>
+                    <ScoreRow
+                      homeLabel={st.home_team || "Local"}
+                      awayLabel={st.away_team || "Visitante"}
+                      homeVal={st.homeFinal}
+                      awayVal={st.awayFinal}
+                      onHomeChange={(v) => update(match.id, { homeFinal: v })}
+                      onAwayChange={(v) => update(match.id, { awayFinal: v })}
+                      inputClass="bg-gray-800 border-gray-700 text-gray-300"
+                      size="sm"
+                    />
+                    <p className="text-[10px] text-gray-600 mt-2 leading-snug">
+                      Marcador acumulado incluyendo prórroga. Ej: si 90&apos; fue 1–1 y marcó 1 gol en T.E., anota 2–1.
+                    </p>
+                  </div>
+                )}
 
                 {/* ── Penales ───────────────────────────────────────────── */}
                 {showPenales && (
