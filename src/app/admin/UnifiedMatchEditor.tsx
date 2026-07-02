@@ -470,10 +470,15 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
           const isDraw = hasScores && home90Num === away90Num;
           const hasValidTeams = TEAMS.includes(st.home_team) && TEAMS.includes(st.away_team);
 
-          // T.E.: mostrar si 90' es empate, o si ya hay datos de T.E. guardados
+          // T.E.: mostrar si 90' es empate, o si ya hay datos de T.E. significativos guardados
           const homeFinalNum = st.homeFinal !== "" && !isNaN(Number(st.homeFinal)) ? Number(st.homeFinal) : null;
           const awayFinalNum = st.awayFinal !== "" && !isNaN(Number(st.awayFinal)) ? Number(st.awayFinal) : null;
-          const hasExistingTE = st.homeFinal !== "" || st.awayFinal !== "";
+          const hasPenData = st.penHome !== "" || st.penAway !== "" || match.penalty_winner !== null;
+          // T.E. existente es "significativo" si el marcador difiere del 90'
+          // (goles en prórroga) O si hay penales (ET real aunque terminara igual que 90')
+          const hasExistingTE =
+            (st.homeFinal !== "" || st.awayFinal !== "") &&
+            (homeFinalNum !== home90Num || awayFinalNum !== away90Num || hasPenData);
           const showTE = isDraw || hasExistingTE;
 
           // Penales: mostrar si T.E. también queda empate, o si ya hay datos de penales
