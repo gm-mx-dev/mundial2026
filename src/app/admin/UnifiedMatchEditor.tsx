@@ -589,7 +589,7 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
                     ? "bg-green-900/40 text-green-400 border-green-800/50"
                     : "bg-blue-900/20 text-blue-400 border-blue-900/40"
                 )}>
-                  {match.status === "finished" ? "✓ Listo"
+                  {match.status === "finished" ? "✓ Fin."
                     : match.status === "live" ? "⚡ Vivo"
                     : "Prog."}
                 </span>
