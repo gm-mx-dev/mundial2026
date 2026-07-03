@@ -39,6 +39,24 @@ function mexicoInputToUtc(local: string): string {
   return new Date(fakeUtc.getTime() + offsetMs).toISOString();
 }
 
+// ── Abreviaturas de 3 letras para el header compacto ────────────────────────
+const TEAM_ABBR: Record<string, string> = {
+  "Alemania": "GER", "Argelia": "ALG", "Argentina": "ARG",
+  "Australia": "AUS", "Austria": "AUT", "Bélgica": "BEL",
+  "Bosnia H.": "BiH", "Brasil": "BRA", "C. Marfil": "CIV",
+  "Cabo Verde": "CPV", "Canadá": "CAN", "Colombia": "COL",
+  "Croacia": "CRO", "Ecuador": "ECU", "Egipto": "EGY",
+  "España": "ESP", "Estados Unidos": "USA", "Francia": "FRA",
+  "Ghana": "GHA", "Inglaterra": "ENG", "Japón": "JPN",
+  "Marruecos": "MAR", "México": "MEX", "Noruega": "NOR",
+  "Países Bajos": "NED", "Paises Bajos": "NED", "Paraguay": "PAR",
+  "Portugal": "POR", "RD Congo": "COD", "Senegal": "SEN",
+  "Sudáfrica": "RSA", "Suecia": "SWE", "Suiza": "SUI",
+};
+function abbrTeam(name: string): string {
+  return TEAM_ABBR[name] ?? name.slice(0, 3).toUpperCase();
+}
+
 // ── Formatea "YYYY-MM-DDTHH:MM" (hora México) como "02/07 1:00pm" ─────────────
 function formatKickoffShort(localDt: string): string {
   if (!localDt) return "";
@@ -551,12 +569,15 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="text-[11px] font-mono text-gray-600 shrink-0">P{match.match_number}</span>
                   {hasValidTeams && (
-                    <div className="flex items-center gap-1 text-xs text-gray-400 min-w-0 flex-1">
+                    <div className="flex items-center gap-1 text-xs min-w-0 flex-1">
                       <FlagIcon team={st.home_team} className="w-4 h-3 rounded-sm shrink-0" />
-                      <span className="truncate">{st.home_team}</span>
-                      <span className="text-gray-700 shrink-0">vs</span>
+                      <span className="font-mono text-gray-300 shrink-0">{abbrTeam(st.home_team)}</span>
+                      <span className="text-gray-700 shrink-0 mx-0.5">-</span>
                       <FlagIcon team={st.away_team} className="w-4 h-3 rounded-sm shrink-0" />
-                      <span className="truncate">{st.away_team}</span>
+                      <span className="font-mono text-gray-300 shrink-0">{abbrTeam(st.away_team)}</span>
+                      {st.kickoff && (
+                        <span className="text-gray-600 shrink-0 ml-1">· {formatKickoffShort(st.kickoff)}</span>
+                      )}
                     </div>
                   )}
                 </div>

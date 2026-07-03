@@ -3,6 +3,7 @@ import Navigation from "@/components/Navigation";
 import BolsaCard from "@/components/BolsaCard";
 import RankingRealtime from "@/components/RankingRealtime";
 import CountdownTimer from "@/components/CountdownTimer";
+import FlagIcon from "@/components/FlagIcon";
 import type { RankingRow, BolsaInfo, Match } from "@/types/database";
 import { formatDateTime } from "@/lib/utils";
 
@@ -50,29 +51,34 @@ export default async function HomePage() {
             {liveMatches.map((m) => (
               <div
                 key={m.id}
-                className="bg-green-950/30 border border-green-800/50 rounded-xl p-4 flex items-center justify-between gap-3"
+                className="bg-green-950/20 border border-green-800/40 rounded-xl px-4 pt-2.5 pb-3"
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block shrink-0" />
-                    <span className="text-xs text-green-400 font-semibold uppercase tracking-wide">En vivo</span>
-                    <span className="text-xs text-gray-600">{formatDateTime(m.kickoff_at)}</span>
+                {/* Indicador + hora */}
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0" />
+                  <span className="text-[11px] text-green-400 font-semibold uppercase tracking-wide">En vivo</span>
+                  <span className="text-[11px] text-gray-600 ml-1">· {formatDateTime(m.kickoff_at)}</span>
+                </div>
+                {/* Marcador estilo scoreboard */}
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <FlagIcon team={m.home_team} className="w-5 h-3.5 rounded-sm shrink-0" />
+                    <span className="font-semibold text-white text-sm truncate">{m.home_team}</span>
                   </div>
-                  <div className="font-semibold text-white truncate">
-                    {m.home_team} vs {m.away_team}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-xl font-bold text-white tabular-nums w-9 h-9 flex items-center justify-center bg-gray-800 rounded-lg">
+                      {m.home_score ?? "–"}
+                    </span>
+                    <span className="text-gray-500 font-bold text-sm">:</span>
+                    <span className="text-xl font-bold text-white tabular-nums w-9 h-9 flex items-center justify-center bg-gray-800 rounded-lg">
+                      {m.away_score ?? "–"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 min-w-0 justify-end">
+                    <span className="font-semibold text-white text-sm truncate">{m.away_team}</span>
+                    <FlagIcon team={m.away_team} className="w-5 h-3.5 rounded-sm shrink-0" />
                   </div>
                 </div>
-                {/* Marcador actual */}
-                {(m.home_score !== null && m.away_score !== null) ? (
-                  <div className="shrink-0 flex items-center gap-2">
-                    <span className="text-2xl font-bold text-white tabular-nums">{m.home_score}</span>
-                    <span className="text-gray-600 font-bold">:</span>
-                    <span className="text-2xl font-bold text-white tabular-nums">{m.away_score}</span>
-                    <span className="text-[10px] text-gray-500 ml-1">90'</span>
-                  </div>
-                ) : (
-                  <div className="shrink-0 text-sm text-gray-500">En curso</div>
-                )}
               </div>
             ))}
           </div>
