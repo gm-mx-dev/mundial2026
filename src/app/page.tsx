@@ -11,9 +11,10 @@ export const revalidate = 30;
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const [rankingRes, bolsaRes, matchesRes] = await Promise.all([
+  const [rankingRes, bolsaRes, liveRes, nextRes] = await Promise.all([
     supabase.from("ranking").select("*").order("position"),
     supabase.rpc("get_bolsa"),
+    supabase.from("matches").select("*").eq("status", "live").order("kickoff_at"),
     supabase
       .from("matches")
       .select("*")
@@ -27,7 +28,8 @@ export default async function HomePage() {
     activos: 18, bolsa_total: 9000,
     primer_lugar: 5400, segundo_lugar: 2250, tercer_lugar: 1350,
   };
-  const nextMatch: Match | null = matchesRes.data?.[0] ?? null;
+  const liveMatches: Match[] = liveRes.data ?? [];
+  const nextMatch: Match | null = nextRes.data?.[0] ?? null;
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -42,8 +44,42 @@ export default async function HomePage() {
           <p className="text-gray-500 text-sm mt-1">Tabla de posiciones en tiempo real</p>
         </div>
 
-        {/* Próximo partido + countdown */}
-        {nextMatch && (
+        {/* ── Partidos EN VIVO ── */}
+        {liveMatches.length > 0 && (
+          <div className="mb-4 space-y-2">
+            {liveMatches.map((m) => (
+              <div
+                key={m.id}
+                className="bg-green-950/30 border border-green-800/50 rounded-xl p-4 flex items-center justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block shrink-0" />
+                    <span className="text-xs text-green-400 font-semibold uppercase tracking-wide">En vivo</span>
+                    <span className="text-xs text-gray-600">{formatDateTime(m.kickoff_at)}</span>
+                  </div>
+                  <div className="font-semibold text-white truncate">
+                    {m.home_team} vs {m.away_team}
+                  </div>
+                </div>
+                {/* Marcador actual */}
+                {(m.home_score !== null && m.away_score !== null) ? (
+                  <div className="shrink-0 flex items-center gap-2">
+                    <span className="text-2xl font-bold text-white tabular-nums">{m.home_score}</span>
+                    <span className="text-gray-600 font-bold">:</span>
+                    <span className="text-2xl font-bold text-white tabular-nums">{m.away_score}</span>
+                    <span className="text-[10px] text-gray-500 ml-1">90'</span>
+                  </div>
+                ) : (
+                  <div className="shrink-0 text-sm text-gray-500">En curso</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Próximo partido (solo si no hay partidos en vivo) ── */}
+        {liveMatches.length === 0 && nextMatch && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Próximo partido</div>

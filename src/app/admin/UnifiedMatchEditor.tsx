@@ -548,18 +548,15 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
             >
               {/* Cabecera del partido */}
               <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-gray-800/60 bg-gray-800/30">
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="text-[11px] font-mono text-gray-600 shrink-0">P{match.match_number}</span>
                   {hasValidTeams && (
-                    <div className="flex items-center gap-1 text-xs text-gray-400 truncate">
+                    <div className="flex items-center gap-1 text-xs text-gray-400 min-w-0 flex-1">
                       <FlagIcon team={st.home_team} className="w-4 h-3 rounded-sm shrink-0" />
-                      <span className="truncate max-w-[70px]">{st.home_team}</span>
-                      <span className="text-gray-700 mx-0.5 shrink-0">vs</span>
+                      <span className="truncate">{st.home_team}</span>
+                      <span className="text-gray-700 shrink-0">vs</span>
                       <FlagIcon team={st.away_team} className="w-4 h-3 rounded-sm shrink-0" />
-                      <span className="truncate max-w-[70px]">{st.away_team}</span>
-                      {st.kickoff && (
-                        <span className="text-gray-600 shrink-0 ml-1">· {formatKickoffShort(st.kickoff)}</span>
-                      )}
+                      <span className="truncate">{st.away_team}</span>
                     </div>
                   )}
                 </div>
@@ -571,9 +568,9 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
                     ? "bg-green-900/40 text-green-400 border-green-800/50"
                     : "bg-blue-900/20 text-blue-400 border-blue-900/40"
                 )}>
-                  {match.status === "finished" ? "✓ Terminado"
-                    : match.status === "live" ? "⚡ En vivo"
-                    : "Programado"}
+                  {match.status === "finished" ? "✓ Listo"
+                    : match.status === "live" ? "⚡ Vivo"
+                    : "Prog."}
                 </span>
               </div>
 
