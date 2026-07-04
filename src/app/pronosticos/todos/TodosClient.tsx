@@ -21,6 +21,8 @@ interface Props {
   participants: Pick<Participant, "id" | "name" | "is_active" | "champion_pick">[];
   predictions: Prediction[];
   totals: Record<string, number>;
+  /** Posición en el ranking (1=primero) — para ordenar igual que la tabla principal */
+  positions: Record<string, number>;
 }
 
 function abbrev(name: string) {
@@ -41,7 +43,7 @@ function abbrev(name: string) {
 const ROW_BG_SOLID = ["#030712", "#0f1623"] as const;
 
 export default function TodosClient({
-  matches, phases, lockedPhaseIds, participants, predictions, totals,
+  matches, phases, lockedPhaseIds, participants, predictions, totals, positions,
 }: Props) {
   const lockedSet = new Set(lockedPhaseIds);
   const router = useRouter();
@@ -69,8 +71,12 @@ export default function TodosClient({
     idx[p.participant_id][p.match_id] = p;
   }
 
-  // Participantes ordenados por puntos desc
-  const sorted = [...participants].sort((a, b) => (totals[b.id] ?? 0) - (totals[a.id] ?? 0));
+  // Participantes ordenados por posición del ranking (igual que la tabla principal).
+  // Usa la posición de la vista `ranking` que ya aplica los desempates correctos.
+  // Si no hay posición registrada (ej. aún sin puntos), va al final.
+  const sorted = [...participants].sort(
+    (a, b) => (positions[a.id] ?? 999) - (positions[b.id] ?? 999)
+  );
 
   // Partidos agrupados por fase
   const phaseGroups = phases.map((ph) => ({
@@ -274,6 +280,8 @@ export default function TodosClient({
                         key={m.id}
                         className={cn(
                           "border-r border-gray-800/60 py-2 px-1 text-center tabular-nums",
+                          /* Regla julio 2026: exacto oct.+=3pts(amarillo), exacto 16avos=2pts(verde) */
+                          hasResult && pts === 3 && "bg-yellow-950/40",
                           hasResult && pts === 2 && "bg-green-950/40",
                           hasResult && pts === 1 && "bg-blue-950/30",
                         )}
@@ -284,6 +292,7 @@ export default function TodosClient({
                           <div>
                             <div className={cn(
                               "font-bold text-xs leading-tight",
+                              pts === 3 ? "text-yellow-400" :
                               pts === 2 ? "text-green-400" :
                               pts === 1 ? "text-blue-400" :
                               pts === 0 && hasResult ? "text-gray-600" :
@@ -294,11 +303,12 @@ export default function TodosClient({
                             {hasResult && pts !== null && (
                               <div className={cn(
                                 "text-[10px] font-semibold leading-none mt-0.5",
+                                pts === 3 ? "text-yellow-500" :
                                 pts === 2 ? "text-green-500" :
                                 pts === 1 ? "text-blue-500" :
                                 "text-gray-700"
                               )}>
-                                {pts === 2 ? "+2" : pts === 1 ? "+1" : "✗"}
+                                {pts === 3 ? "+3" : pts === 2 ? "+2" : pts === 1 ? "+1" : "✗"}
                               </div>
                             )}
                           </div>

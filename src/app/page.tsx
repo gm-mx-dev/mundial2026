@@ -145,11 +145,15 @@ export default async function HomePage() {
           <RankingRealtime initialRows={rows} />
         </div>
 
-        {/* Leyenda de puntos */}
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs text-gray-600">
+        {/* Leyenda de puntos — regla julio 2026: exacto 16avos=2pts, exacto octavos+=3pts */}
+        <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs text-gray-600 sm:grid-cols-4">
+          <div className="bg-gray-900 rounded-lg p-2">
+            <div className="text-yellow-400 font-bold text-base">3</div>
+            <div>Exacto oct.+</div>
+          </div>
           <div className="bg-gray-900 rounded-lg p-2">
             <div className="text-green-400 font-bold text-base">2</div>
-            <div>Marcador exacto</div>
+            <div>Exacto 16avos</div>
           </div>
           <div className="bg-gray-900 rounded-lg p-2">
             <div className="text-blue-400 font-bold text-base">1</div>

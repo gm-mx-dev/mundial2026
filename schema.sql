@@ -105,7 +105,9 @@ CREATE TABLE predictions (
   match_id        UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
   home_score      INT,                          -- Pronóstico local
   away_score      INT,                          -- Pronóstico visitante
-  points_earned   INT,                          -- Calculado al registrar resultado: 0, 1, o 2
+  -- Calculado al registrar resultado: 0, 1, 2 (exacto 16avos) o 3 (exacto oct.+)
+  -- Regla julio 2026: exacto en 16avos = 2 pts, exacto en octavos en adelante = 3 pts
+  points_earned   INT,
   entered_by_admin UUID REFERENCES participants(id),  -- NULL si lo capturó el participante mismo
   is_override     BOOLEAN DEFAULT false,        -- true = ingresado fuera de tiempo por admin
   override_reason TEXT,                         -- Razón obligatoria si is_override = true
@@ -120,28 +122,44 @@ CREATE INDEX idx_predictions_match ON predictions(match_id);
 -- ────────────────────────────────────────────────
 -- 5. TABLA DE POSICIONES (vista calculada)
 -- ────────────────────────────────────────────────
--- No se guarda como tabla — se calcula como VIEW para que siempre esté actualizada
+-- No se guarda como tabla — se calcula como VIEW para que siempre esté actualizada.
+--
+-- ACTUALIZADA julio 2026: regla de puntos nuevos
+--   exact_scores     → aciertos de 2 pts (16avos, se muestran en verde)
+--   exact_scores_3pt → aciertos de 3 pts (octavos en adelante, se muestran en amarillo)
+-- El desempate primario usa >= 2 (cualquier exacto), secundario el bono campeón.
+--
+-- IMPORTANTE: usar DROP + CREATE (no CREATE OR REPLACE) si ya existe la vista,
+-- porque renombrar columnas no está permitido con OR REPLACE.
 
-CREATE OR REPLACE VIEW ranking AS
+DROP VIEW IF EXISTS ranking;
+CREATE VIEW ranking AS
 SELECT
   p.id,
   p.name,
   p.champion_pick,
   p.is_active,
   COALESCE(SUM(pred.points_earned), 0) AS total_points,
+  -- Exactos de 2 pts (solo fase 16avos)
   COUNT(CASE WHEN pred.points_earned = 2 THEN 1 END) AS exact_scores,
+  -- Exactos de 3 pts (octavos en adelante — regla julio 2026)
+  COUNT(CASE WHEN pred.points_earned = 3 THEN 1 END) AS exact_scores_3pt,
   COUNT(CASE WHEN pred.points_earned = 1 THEN 1 END) AS correct_results,
   COUNT(CASE WHEN pred.points_earned = 0 AND pred.home_score IS NOT NULL THEN 1 END) AS wrong_predictions,
   RANK() OVER (
     PARTITION BY p.is_active
     ORDER BY
       COALESCE(SUM(pred.points_earned), 0) DESC,
-      COUNT(CASE WHEN pred.points_earned = 2 THEN 1 END) DESC
+      -- Desempate 1: quien tenga más exactos (cualquiera, 2 o 3 pts)
+      COUNT(CASE WHEN pred.points_earned >= 2 THEN 1 END) DESC
   ) AS position
 FROM participants p
 LEFT JOIN predictions pred ON pred.participant_id = p.id
 WHERE p.is_active = true
 GROUP BY p.id, p.name, p.champion_pick, p.is_active;
+
+-- Permisos para anon y authenticated (necesario porque RLS no aplica a vistas)
+GRANT SELECT ON ranking TO anon, authenticated;
 
 -- ────────────────────────────────────────────────
 -- 6. BOLSA DINÁMICA (función)
@@ -208,26 +226,40 @@ CREATE INDEX idx_audit_created_at ON audit_log(created_at DESC);
 -- ────────────────────────────────────────────────
 -- 8. FUNCIÓN: CALCULAR PUNTOS DE UN PARTIDO
 -- ────────────────────────────────────────────────
+-- Llamada manualmente desde el botón "Recalcular" en el panel de Admin.
+-- Aplica la regla de julio 2026: exacto en 16avos = 2 pts, octavos+ = 3 pts.
 CREATE OR REPLACE FUNCTION calculate_points(
   p_match_id UUID,
   p_home_score INT,
   p_away_score INT
 ) RETURNS VOID AS $$
 DECLARE
-  v_pred RECORD;
-  v_points INT;
+  v_pred      RECORD;
+  v_points    INT;
+  v_is_16avos BOOLEAN;
+  v_exact_pts INT;
 BEGIN
+  -- Verificar si el partido es de la fase 16avos
+  SELECT (ph.name = '16avos')
+  INTO v_is_16avos
+  FROM matches m
+  JOIN phases ph ON ph.id = m.phase_id
+  WHERE m.id = p_match_id;
+
+  -- Exacto vale 2 en 16avos, 3 en octavos en adelante (regla julio 2026)
+  v_exact_pts := CASE WHEN v_is_16avos THEN 2 ELSE 3 END;
+
   FOR v_pred IN
     SELECT * FROM predictions WHERE match_id = p_match_id
   LOOP
     IF v_pred.home_score = p_home_score AND v_pred.away_score = p_away_score THEN
-      v_points := 2; -- Marcador exacto
+      v_points := v_exact_pts; -- Marcador exacto (2 o 3 según la fase)
     ELSIF
       (v_pred.home_score > v_pred.away_score AND p_home_score > p_away_score) OR
       (v_pred.home_score < v_pred.away_score AND p_home_score < p_away_score) OR
       (v_pred.home_score = v_pred.away_score AND p_home_score = p_away_score)
     THEN
-      v_points := 1; -- Resultado correcto
+      v_points := 1; -- Resultado correcto (ganador o empate, sin marcador exacto)
     ELSE
       v_points := 0; -- Incorrecto
     END IF;
@@ -375,11 +407,16 @@ ALTER TABLE matches ADD COLUMN IF NOT EXISTS penalty_away_score INT;
 -- Incluye bono de +5 si es la Final y el participante acertó al campeón.
 -- NOTA: home_score/away_score = marcador a 90 min (base de la quiniela).
 --       penalty_winner solo aplica para desempatar campeón en la Final.
+--
+-- ACTUALIZADO julio 2026: exacto en 16avos = 2 pts, exacto en octavos+ = 3 pts.
+-- La variable v_is_16avos verifica el nombre de la fase para determinar v_exact_points.
 
 CREATE OR REPLACE FUNCTION recalculate_match_points()
 RETURNS TRIGGER AS $$
 DECLARE
   v_is_final      BOOLEAN := FALSE;
+  v_is_16avos     BOOLEAN := FALSE;
+  v_exact_points  INT := 2;        -- Default: 2 pts (16avos). Sube a 3 en oct.+
   v_champion      TEXT;
   v_champion_norm TEXT;
 BEGIN
@@ -389,7 +426,15 @@ BEGIN
 
     IF NEW.home_score IS NOT NULL AND NEW.away_score IS NOT NULL THEN
 
-      -- Verificar si es la Final
+      -- Verificar fase del partido para determinar pts de exacto
+      -- 16avos → 2 pts | octavos en adelante → 3 pts (regla julio 2026)
+      SELECT (ph.name = '16avos')
+      INTO v_is_16avos
+      FROM phases ph WHERE ph.id = NEW.phase_id;
+
+      v_exact_points := CASE WHEN v_is_16avos THEN 2 ELSE 3 END;
+
+      -- Verificar si es la Final (para bono campeón)
       SELECT (ph.name = 'final' AND NEW.match_number = 1)
       INTO v_is_final
       FROM phases ph WHERE ph.id = NEW.phase_id;
@@ -417,7 +462,9 @@ BEGIN
       UPDATE predictions p
       SET points_earned = (
         CASE
-          WHEN p.home_score = NEW.home_score AND p.away_score = NEW.away_score THEN 2
+          -- Marcador exacto: 2 pts en 16avos, 3 pts en octavos en adelante
+          WHEN p.home_score = NEW.home_score AND p.away_score = NEW.away_score THEN v_exact_points
+          -- Resultado correcto (ganador o empate): siempre 1 pt
           WHEN SIGN(p.home_score - p.away_score) = SIGN(NEW.home_score - NEW.away_score) THEN 1
           ELSE 0
         END
@@ -444,7 +491,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- IMPORTANTE: usar CREATE OR REPLACE + DROP IF EXISTS para re-ejecuciones seguras
+-- IMPORTANTE: usar DROP IF EXISTS + CREATE para re-ejecuciones seguras
 DROP TRIGGER IF EXISTS trg_recalculate_points ON matches;
 CREATE TRIGGER trg_recalculate_points
   AFTER UPDATE ON matches

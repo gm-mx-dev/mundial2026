@@ -26,6 +26,9 @@ export default function RankingTable({ rows }: { rows: RankingRow[] }) {
             </th>
             <th className="text-center py-2 px-2 font-medium w-10">Pos</th>
             <th className="text-center py-2 px-2 font-medium">Pts</th>
+            {/* ✓✓✓ = exacto octavos+ (3pts, amarillo) — regla julio 2026 */}
+            <th className="text-center py-2 px-2 font-medium text-yellow-500">✓✓✓</th>
+            {/* ✓✓ = exacto 16avos (2pts, verde) */}
             <th className="text-center py-2 px-2 font-medium">✓✓</th>
             <th className="text-center py-2 px-2 font-medium">✓</th>
             <th className="text-left py-2 px-3 font-medium min-w-[120px]">Campeón</th>
@@ -77,6 +80,11 @@ export default function RankingTable({ rows }: { rows: RankingRow[] }) {
                   </span>
                 </td>
 
+                {/* Exactos octavos+ 3pts (amarillo) */}
+                <td className="py-3 px-2 text-center text-yellow-400 font-medium">
+                  {row.exact_scores_3pt}
+                </td>
+                {/* Exactos 16avos 2pts (verde) */}
                 <td className="py-3 px-2 text-center text-green-400 font-medium">
                   {row.exact_scores}
                 </td>

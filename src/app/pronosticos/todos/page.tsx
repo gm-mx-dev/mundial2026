@@ -17,16 +17,23 @@ export default async function TodosPage() {
     user
       ? supabase.from("participants").select("is_admin").eq("auth_user_id", user.id).single()
       : Promise.resolve({ data: null }),
-    supabase.from("ranking").select("id, total_points"),
+    // Seleccionamos position para ordenar igual que la tabla principal (con desempates).
+    // exact_scores_3pt incluido para futuro uso y consistencia con el tipo RankingRow.
+    supabase.from("ranking").select("id, total_points, position, exact_scores, exact_scores_3pt"),
   ]);
 
   const matches: Match[] = matchesRes.data ?? [];
   const phases: Phase[] = phasesRes.data ?? [];
   const participants: Pick<Participant, "id" | "name" | "is_active" | "champion_pick">[] = participantsRes.data ?? [];
 
-  // Totales por participante para ordenar filas
+  // Totales por participante (para mostrar pts en la columna de nombre)
   const totals: Record<string, number> = {};
-  for (const r of rankingRes.data ?? []) totals[r.id] = r.total_points;
+  // Posición en el ranking — determina el orden de las filas, igual que la tabla principal
+  const positions: Record<string, number> = {};
+  for (const r of rankingRes.data ?? []) {
+    totals[r.id] = r.total_points;
+    positions[r.id] = r.position;
+  }
 
   // Solo fases donde ya empezó el primer partido
   const now = new Date();
@@ -82,6 +89,7 @@ export default async function TodosPage() {
           participants={participants}
           predictions={allPredictions}
           totals={totals}
+          positions={positions}
         />
       </main>
     </div>

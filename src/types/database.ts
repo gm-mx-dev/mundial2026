@@ -83,7 +83,13 @@ export type RankingRow = {
   champion_pick: string | null;
   is_active: boolean;
   total_points: number;
+  /** Marcadores exactos en 16avos (valen 2 pts, se muestran en verde) */
   exact_scores: number;
+  /**
+   * Marcadores exactos en octavos en adelante (valen 3 pts, se muestran en amarillo)
+   * Regla julio 2026: exacto en 16avos = 2 pts, exacto en octavos+ = 3 pts
+   */
+  exact_scores_3pt: number;
   correct_results: number;
   wrong_predictions: number;
   position: number;

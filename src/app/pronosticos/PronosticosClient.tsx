@@ -281,13 +281,15 @@ export default function PronosticosClient({ matches, phases, participantId, init
                         <div className="mt-2.5 flex items-center justify-center gap-2 flex-wrap">
                           {/* Puntos ganados */}
                           {isFinished && pts !== null && pts !== undefined && (
+                            {/* Regla julio 2026: exacto 16avos=2pts(verde), exacto oct.+=3pts(amarillo) */}
                             <span className={cn(
                               "text-xs font-bold px-2 py-0.5 rounded-full border",
+                              pts === 3 ? "bg-yellow-900/40 text-yellow-400 border-yellow-800/40" :
                               pts === 2 ? "bg-green-900/40 text-green-400 border-green-800/40" :
                               pts === 1 ? "bg-blue-900/40 text-blue-400 border-blue-800/40" :
                               "bg-gray-800/60 text-gray-500 border-gray-700/40"
                             )}>
-                              {pts === 2 ? "✓✓ +2 pts" : pts === 1 ? "✓ +1 pt" : "✗ 0 pts"}
+                              {pts === 3 ? "✓✓✓ +3 pts" : pts === 2 ? "✓✓ +2 pts" : pts === 1 ? "✓ +1 pt" : "✗ 0 pts"}
                             </span>
                           )}
 
@@ -306,6 +308,7 @@ export default function PronosticosClient({ matches, phases, participantId, init
                             <span className={cn(
                               "text-sm font-bold tabular-nums",
                               isLive ? "text-green-300" :
+                              pts === 3 ? "text-yellow-400" :
                               pts === 2 ? "text-green-400" :
                               pts === 1 ? "text-blue-400" :
                               "text-white"
