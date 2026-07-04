@@ -110,7 +110,7 @@ export default async function PronosticosStatus() {
                   </span>
                   {s.needs_proxy && (
                     <span className="text-xs text-yellow-500/70 border border-yellow-700/40 px-1 rounded">
-                      admin
+                      sin cel
                     </span>
                   )}
                 </div>
