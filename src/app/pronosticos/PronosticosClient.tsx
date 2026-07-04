@@ -1,5 +1,6 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { formatDateTime, toMxDateKey, formatDayHeader, cn } from "@/lib/utils";
 import FlagIcon from "@/components/FlagIcon";
@@ -26,6 +27,36 @@ export default function PronosticosClient({ matches, phases, participantId, init
   const [predictions, setPredictions] = useState(initialPredictions);
   const [saveStatus, setSaveStatus] = useState<Record<string, SaveStatus>>({});
   const supabase = createClient();
+  const router = useRouter();
+
+  // ── Realtime: bloquear automáticamente cuando un partido pase a "live" o
+  //    cuando el admin cambie is_open de una fase. Ambos eventos disparan
+  //    router.refresh() para re-renderizar con datos frescos del servidor.
+  useEffect(() => {
+    const channel = supabase
+      .channel("pronosticos-lock-watch")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "matches" },
+        (payload) => {
+          const newStatus = (payload.new as { status?: string }).status;
+          if (newStatus === "live" || newStatus === "finished") {
+            router.refresh();
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "phases" },
+        () => {
+          // El admin cambió is_open — refrescar para actualizar el lock
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, router]);
 
   const now = new Date();
   const todayKey = getTodayMxKey();
@@ -38,7 +69,9 @@ export default function PronosticosClient({ matches, phases, participantId, init
         const d = new Date(m.kickoff_at);
         return min === null || d < min ? d : min;
       }, null);
-      const phaseLocked = firstKickoff !== null && firstKickoff <= now;
+      // Bloqueado si: el primer partido ya arrancó (tiempo automático)
+      //            O el admin cerró la fase manualmente (!ph.is_open)
+      const phaseLocked = (firstKickoff !== null && firstKickoff <= now) || !ph.is_open;
       const dayGroups = phaseMatches.reduce<Map<string, Match[]>>((acc, m) => {
         const key = toMxDateKey(m.kickoff_at);
         if (!acc.has(key)) acc.set(key, []);

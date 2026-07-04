@@ -35,11 +35,14 @@ export default async function TodosPage() {
     positions[r.id] = r.position;
   }
 
-  // Solo fases donde ya empezó el primer partido
+  // Fases bloqueadas: ya empezó el primer partido (tiempo) O admin cerró manualmente
   const now = new Date();
   const lockedPhaseIds = new Set(
     phases
       .filter((ph) => {
+        // Cerrada manualmente por el admin
+        if (!ph.is_open) return true;
+        // Cierre automático: primer partido de la fase ya arrancó
         const phMatches = matches.filter((m) => m.phase_id === ph.id);
         const first = phMatches.reduce<Date | null>((min, m) => {
           const d = new Date(m.kickoff_at);

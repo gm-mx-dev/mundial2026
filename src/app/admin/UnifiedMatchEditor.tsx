@@ -228,6 +228,34 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
 
   const [activePhaseId, setActivePhaseId] = useState<number>(phases[0]?.id ?? 0);
 
+  // Estado local de is_open por fase (para optimistic UI al hacer toggle)
+  const [phaseOpen, setPhaseOpen] = useState<Record<number, boolean>>(
+    Object.fromEntries(phases.map((ph) => [ph.id, ph.is_open]))
+  );
+  const [togglingPhase, setTogglingPhase] = useState<number | null>(null);
+
+  const handleTogglePhase = async (phaseId: number) => {
+    const currentOpen = phaseOpen[phaseId] ?? true;
+    const newOpen = !currentOpen;
+    setTogglingPhase(phaseId);
+    // Optimistic update
+    setPhaseOpen((prev) => ({ ...prev, [phaseId]: newOpen }));
+    const { error } = await supabase
+      .from("phases")
+      .update({ is_open: newOpen })
+      .eq("id", phaseId);
+    if (error) {
+      // Revert on error
+      setPhaseOpen((prev) => ({ ...prev, [phaseId]: currentOpen }));
+      alert(`Error al cambiar estado de la fase: ${error.message}`);
+    } else {
+      // El Realtime en PronosticosClient de los participantes disparará router.refresh()
+      // automáticamente. El admin también refresca para tener datos consistentes.
+      router.refresh();
+    }
+    setTogglingPhase(null);
+  };
+
   const [editState, setEditState] = useState<Record<string, MatchEditState>>(
     Object.fromEntries(
       matches.map((m) => [
@@ -499,6 +527,64 @@ export default function UnifiedMatchEditor({ matches, phases, adminId }: Props) 
           );
         })}
       </div>
+
+      {/* ── Control de apertura/cierre de fase ────────────────────────────── */}
+      {(() => {
+        const activePh = phases.find((ph) => ph.id === activePhaseId);
+        if (!activePh) return null;
+        const isOpen = phaseOpen[activePhaseId] ?? true;
+        const phaseMatches = matches.filter((m) => m.phase_id === activePhaseId);
+        const firstKickoff = phaseMatches.reduce<Date | null>((min, m) => {
+          const d = new Date(m.kickoff_at);
+          return min === null || d < min ? d : min;
+        }, null);
+        const autoLocked = firstKickoff !== null && firstKickoff <= new Date();
+        const isToggling = togglingPhase === activePhaseId;
+
+        return (
+          <div className={cn(
+            "mx-4 mt-3 px-3 py-2.5 rounded-lg border flex items-center justify-between gap-3",
+            isOpen && !autoLocked
+              ? "bg-green-950/20 border-green-800/40"
+              : "bg-red-950/20 border-red-800/40"
+          )}>
+            <div className="min-w-0">
+              <div className={cn(
+                "text-xs font-semibold flex items-center gap-1.5",
+                isOpen && !autoLocked ? "text-green-400" : "text-red-400"
+              )}>
+                {isOpen && !autoLocked ? "🔓 Fase abierta" : "🔒 Fase cerrada"}
+                {autoLocked && isOpen && (
+                  <span className="text-gray-500 font-normal">(cierre automático por tiempo)</span>
+                )}
+                {!isOpen && (
+                  <span className="text-gray-500 font-normal">(cerrada manualmente)</span>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                {isOpen && !autoLocked
+                  ? "Los participantes pueden editar sus pronósticos."
+                  : "Los pronósticos están bloqueados para todos los participantes."}
+              </p>
+            </div>
+            <button
+              onClick={() => handleTogglePhase(activePhaseId)}
+              disabled={isToggling || autoLocked}
+              title={autoLocked ? "Bloqueada automáticamente porque ya inició el primer partido" : ""}
+              className={cn(
+                "shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all whitespace-nowrap",
+                autoLocked
+                  ? "opacity-40 cursor-not-allowed bg-gray-800 border-gray-700 text-gray-500"
+                  : isOpen
+                    ? "bg-red-900/40 border-red-700/60 text-red-300 hover:bg-red-900/60"
+                    : "bg-green-900/40 border-green-700/60 text-green-300 hover:bg-green-900/60"
+              )}
+            >
+              {isToggling ? "..." : isOpen ? "Cerrar fase" : "Abrir fase"}
+            </button>
+          </div>
+        );
+      })()}
 
       {/* ── Aviso ──────────────────────────────────────────────────────────── */}
       <div className="mx-4 mt-3 mb-4 px-3 py-2 bg-yellow-900/20 border border-yellow-800/40 rounded-lg">
