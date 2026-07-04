@@ -280,8 +280,8 @@ export default function PronosticosClient({ matches, phases, participantId, init
                       {(hasResult || isLive) && (
                         <div className="mt-2.5 flex items-center justify-center gap-2 flex-wrap">
                           {/* Puntos ganados */}
+                          {/* Regla julio 2026: exacto 16avos=2pts(verde), exacto oct.+=3pts(amarillo) */}
                           {isFinished && pts !== null && pts !== undefined && (
-                            {/* Regla julio 2026: exacto 16avos=2pts(verde), exacto oct.+=3pts(amarillo) */}
                             <span className={cn(
                               "text-xs font-bold px-2 py-0.5 rounded-full border",
                               pts === 3 ? "bg-yellow-900/40 text-yellow-400 border-yellow-800/40" :
